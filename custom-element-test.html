@@ -1,0 +1,70 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="imports.js"></script>
+  <link rel="import" href="polymer-resin/polymer-resin.html" />
+  <title>Custom Tag Tests</title>
+</head>
+<body>
+  <dom-module id="custom-tag">
+    <template>
+      <div style="[[css]]">
+        <a href="{{src}}"><img src="{{src}}" alt="[[title]]">[[_incr(num)]]</a>
+        <a href="javascript:alert('hi')">(hi)</a>  <!-- Not injected -->
+      </div>
+    </template>
+    <script>
+      var CustomTag = Polymer({
+        is: 'custom-tag',
+        properties: {
+          // Passed to img src.  Not doubly escaped.
+          // Not required to be a TrustedResourceUrl.
+          src: String,
+          // Plain text
+          title: {
+            type: String,
+          },
+          // Not forced to string.
+          num: {
+            type: Number,
+            // Make sure we get the computed value, not a function object.
+            value: function () {
+              return 42;
+            }
+          },
+
+          // Forwarded to style
+          // Polymer pass complains if this is goog.html.SafeStyle
+          /** @type {string|!goog.html.SafeStyle} */
+          css: String
+        },
+        _incr: function (n) {
+          return n + 1;  // numeric only if n is numeric
+        }
+      });
+    </script>
+  </dom-module>
+
+  <test-fixture id="one-custom-tag">
+    <template>
+      <custom-tag/>
+    </template>
+  </test-fixture>
+
+</body>
+</html>

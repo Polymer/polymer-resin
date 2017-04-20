@@ -1,0 +1,70 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="imports.js"></script>
+  <link rel="import" href="polymer-resin/polymer-resin.html" />
+  <title>Classify Tests</title>
+</head>
+<body>
+  <!-- Define some custom elements so
+       we can check how they're classified -->
+  <dom-module id="my-custom">
+    <template>
+      <br>
+    </template>
+    <script>
+      Polymer({
+        is: 'my-custom',
+        properties: {}
+      });
+    </script>
+  </dom-module>
+  <dom-module id="my-custom-link">
+    <template>
+      <br>
+    </template>
+    <script>
+      Polymer({
+        is: 'my-custom-link',
+        extends: 'a',
+        properties: {}
+      });
+    </script>
+  </dom-module>
+
+  <test-fixture id="classify-tests">
+    <template>
+      <div>
+        <!-- Our tests grab these and classify them -->
+        <a id="link">a</a>
+        <b>b</b>
+        <table><tr><td></td><th></th></tr></table>
+        <div></div>
+        <img>
+        <input>
+        <ul><li>li</li></ul>
+        <blink></blink>  <!-- Known legacy element -->
+
+        <my-custom></my-custom>
+        <a id="mylink" is="my-custom-link">my-custom-link</a>
+        <un-registered>unregistered</un-registered>
+      </div>
+    </template>
+  </test-fixture>
+</body>
+</html>

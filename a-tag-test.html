@@ -1,0 +1,53 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="imports.js"></script>
+  <link rel="import" href="polymer-resin/polymer-resin.html" />
+  <title>A Tag Tests</title>
+</head>
+<body>
+  <dom-module id="items-to-check">
+    <template>
+      <ul>
+        <li><a id="a1" href="{{innocuousString}}">Innocuous Value</a></li>
+        <li><a id="a2" href="{{safeUrl}}">Safe Because of Runtime Type</a></li>
+        <li><a id="a3" href="{{evilPayload}}">JS URL of Unknown Provenance</a></li>
+        <li><a id="a4" href="javascript:safe()">Authored By Trusted Author</a></li>
+      </ul>
+    </template>
+    <script>
+      Polymer({
+        is: 'items-to-check',
+        properties: {
+          innocuousString: String,
+          safeUrl: String,
+          evilPayload: String
+        }
+      });
+    </script>
+  </dom-module>
+
+  <test-fixture id="a-tag-tests">
+    <template>
+      <items-to-check id="to-check"
+                      innocuous-string="http://example.com/ok"
+                      evil-payload="javascript:doEvil()" />
+    </template>
+  </test-fixture>
+</body>
+</html>
