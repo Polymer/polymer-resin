@@ -1,0 +1,45 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="imports.js"></script>
+  <link rel="import" href="polymer-resin/polymer-resin.html" />
+  <title>Src Attr As Text Test</title>
+</head>
+<body>
+  <!-- Test that we don't muck unnecessarily with properties like
+       "src" that have a conventionally understood name when the value
+       reaches a sink that does not treat it as a URL. -->
+  <dom-module id="boring-anecdote">
+    <template>I bought a coffee at [[src]] then I dropped it.</template>
+    <script>
+      Polymer({
+        is: 'boring-anecdote',
+        properties: {
+          src: String
+        }
+      });
+    </script>
+  </dom-module>
+
+  <test-fixture id="src-attr-as-text-fixture">
+    <template>
+      <boring-anecdote />
+    </template>
+  </test-fixture>
+</body>
+</html>
