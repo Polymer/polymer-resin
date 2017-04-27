@@ -24,10 +24,10 @@ goog.require('goog.html.SafeScript');
 goog.require('goog.html.SafeStyle');
 goog.require('goog.html.SafeUrl');
 goog.require('goog.html.TrustedResourceUrl');
-goog.require('goog.string');
 goog.require('goog.string.Const');
 goog.require('goog.string.TypedString');
 goog.require('security.html.contracts');
+goog.require('security.html.namealiases');
 goog.require('security.polymer_resin.CustomElementClassification');
 goog.require('security.polymer_resin.classifyElement');
 goog.require('security.polymer_resin.hintUsesDeprecatedRegisterElement');
@@ -181,34 +181,52 @@ var ValueHandler;
       }
 
       var element = /** @type {!Element} */(node);
-      var propName;
+      var elementName = element.localName;
+
+      // Check whether an uncustomized version has an own property.
+      var elementProxy = getUncustomizedProxy(element);
+
       switch (type) {
         case 'attribute':
           // TODO: figure out why attr-property-aliasing test doesn't seem to be
           // reaching this branch but running under Polymer 1.7 inside
           // polygerrit does.
-          propName = goog.string.toCamelCase(name);
-          break;
+          var propName = security.html.namealiases.attrToProperty(name);
+          if (propName in elementProxy) {
+            break;
+          }
+          return value;
         case 'property':
-          propName = name;
-          break;
+          if (name in elementProxy) {
+            break;
+          }
+          var worstCase =
+              security.html.namealiases.specialPropertyNameWorstCase(name);
+          if (worstCase && worstCase in elementProxy) {
+            break;
+          }
+          return value;
         default:
           throw new Error(type + ': ' + typeof type);
       }
 
-      var elementName = element.localName;
-
-      // Check whether an uncustomized version has an own property.
-      var elementProxy = getUncustomizedProxy(element);
-      if (!(propName in elementProxy)) {
-        return value;
-      }
-
-      // Technically, name.replace(/(^|[a-z])([A-Z])/g, "$1-$2").toLowerCase()
-      // matches the polymer scheme, but dashes aren't used in builtin
-      // properties, so the below is a worst-case analysis.
-      // TODO: className -> class, etc.
-      var attrName = name.toLowerCase();  // TODO turkish I?
+      /**
+       * The HTML attribute name.
+       * @type {string}
+       */
+      var attrName =
+          (type == 'attribute')  // Closed set tested in switch above
+          // toLowerCase is Turkish-I safe because
+          // www.ecma-international.org/ecma-262/6.0/#sec-string.prototype.tolowercase
+          // says
+          // """
+          // 5. For each code point c in cpList, if the Unicode Character
+          // Database provides a LANGUAGE INSENSITIVE lower case equivalent of c
+          // then replace c in cpList with that equivalent code point(s).
+          // ""
+          // modulo bugs in old versions of Rhino.
+          ? name.toLowerCase()
+          : security.html.namealiases.propertyToAttr(name);
 
       /** @type {?security.html.contracts.AttrType} */
       var attrType = security.html.contracts.typeOfAttribute(

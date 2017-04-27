@@ -40,9 +40,12 @@ http://polymer.github.io/PATENTS.txt
 
   <dom-module id="alias-attr-buttons">
     <template>
-      <button class="regular-button"
+      <button class="property-button"
               formaction="{{action}}"
               form-action="{{action}}"
+              >&#9786;</button>
+      <button class="attribute-button"
+              formaction$="{{action}}"
               >&#9786;</button>
       <alias-test-button class="custom-button" action="{{action}}">
       </alias-test-button>

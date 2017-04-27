@@ -22,12 +22,14 @@ suite(
 
     function () {
       var buttons;
-      var regularButton;
+      var propertyButton;
+      var attributeButton;
       var customButton;
 
       setup(function () {
         buttons = fixture('attr-property-aliasing-fixture');
-        regularButton = buttons.querySelector('.regular-button');
+        propertyButton = buttons.querySelector('.property-button');
+        attributeButton = buttons.querySelector('.attribute-button');
         customButton = buttons
             .querySelector('.custom-button')
             .querySelector('button');
@@ -42,42 +44,49 @@ suite(
       test('innocuous_action_via_attribute', function() {
         buttons.setAttribute('action', '/safe');
 
-        assert.equal('/safe', regularButton.getAttribute('formaction'));
+        assert.equal('/safe', propertyButton.getAttribute('formaction'));
+        assert.equal('/safe', attributeButton.getAttribute('formaction'));
         assert.equal('/safe', customButton.getAttribute('formaction'));
       });
 
       test('innocuous_action_via_attribute_case_insensitive', function() {
         buttons.setAttribute('ACTION', '/safe');
 
-        assert.equal('/safe', regularButton.getAttribute('formaction'));
+        assert.equal('/safe', propertyButton.getAttribute('formaction'));
+        assert.equal('/safe', attributeButton.getAttribute('formaction'));
         assert.equal('/safe', customButton.getAttribute('formaction'));
       });
 
       test('safe_action_via_property', function() {
         buttons.action = SAFE_ACTION;
 
-        assert.equal(TYPED_STRING_TEXT, regularButton.getAttribute('formaction'));
+        assert.equal(TYPED_STRING_TEXT, propertyButton.getAttribute('formaction'));
+        assert.equal(TYPED_STRING_TEXT, attributeButton.getAttribute('formaction'));
         assert.equal(TYPED_STRING_TEXT, customButton.getAttribute('formaction'));
       });
 
       test('unsafe_action_via_attribute', function() {
         buttons.setAttribute('action', UNSAFE_ACTION);
 
-        assert.equal(INNOCUOUS_ACTION, regularButton.getAttribute('formaction'));
+        assert.equal(INNOCUOUS_ACTION, propertyButton.getAttribute('formaction'));
+        assert.equal(INNOCUOUS_ACTION, attributeButton.getAttribute('formaction'));
         assert.equal(INNOCUOUS_ACTION, customButton.getAttribute('formaction'));
       });
 
       test('unsafe_action_via_attribute_case_insensitive', function() {
         buttons.setAttribute('ACTION', UNSAFE_ACTION);
 
-        assert.equal(INNOCUOUS_ACTION, regularButton.getAttribute('formaction'));
+        assert.equal(INNOCUOUS_ACTION, propertyButton.getAttribute('formaction'));
+        assert.equal(INNOCUOUS_ACTION, attributeButton.getAttribute('formaction'));
         assert.equal(INNOCUOUS_ACTION, customButton.getAttribute('formaction'));
       });
 
       test('unsafe_action_via_property', function() {
         buttons.action = UNSAFE_ACTION;
 
-        assert.equal(INNOCUOUS_ACTION, regularButton.getAttribute('formaction'));
+        assert.equal(INNOCUOUS_ACTION, propertyButton.getAttribute('formaction'));
+        assert.equal(INNOCUOUS_ACTION, attributeButton.getAttribute('formaction'));
         assert.equal(INNOCUOUS_ACTION, customButton.getAttribute('formaction'));
       });
+
     });
