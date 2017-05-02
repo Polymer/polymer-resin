@@ -17,6 +17,8 @@
 // Will that cause problems if parts of the web components API are defined
 // natively instead of polyfilled?
 
+goog.provide('security.polymer_resin.allowIdentifierWithPrefix');
+
 goog.require('goog.debug');
 goog.require('goog.dom.NodeType');
 goog.require('goog.html.SafeHtml');
@@ -24,6 +26,7 @@ goog.require('goog.html.SafeScript');
 goog.require('goog.html.SafeStyle');
 goog.require('goog.html.SafeUrl');
 goog.require('goog.html.TrustedResourceUrl');
+goog.require('goog.string');
 goog.require('goog.string.Const');
 goog.require('goog.string.TypedString');
 goog.require('security.html.contracts');
@@ -44,6 +47,38 @@ goog.require('security.polymer_resin.hintUsesDeprecatedRegisterElement');
  * }}
  */
 var ValueHandler;
+
+
+/**
+ * Specifies that attributes with type IDENTIFIER that have the given
+ * prefix should be allowed.
+ *
+ * May be called multiple times with different prefixes.  The allowed
+ * identifiers are the union of those allowed by all calls.
+ *
+ * By default, only the empty identifier is allowed.
+ *
+ * @param {string} prefix A string prefix.  The empty string is a prefix
+ *    of all strings.
+ */
+security.polymer_resin.allowIdentifierWithPrefix = function (prefix) {
+  security.polymer_resin.allowedIdentifierPattern_ = new RegExp(
+      security.polymer_resin.allowedIdentifierPattern_.source
+      + '|^' + goog.string.regExpEscape(prefix));
+};
+goog.exportSymbol(
+    'security.polymer_resin.allowIdentifierWithPrefix',
+    security.polymer_resin.allowIdentifierWithPrefix);
+
+
+/**
+ * @type {!RegExp}
+ * @private
+ */
+security.polymer_resin.allowedIdentifierPattern_ = /^$/;
+// This allows the empty identifier by default, which is redundant with
+// the falsey value check in sanitize below, so effectively grants no
+// authority.
 
 
 (function () {
@@ -452,13 +487,13 @@ var ValueHandler;
          * @return {string}
          */
         function allowIdentifier(v) {
-          // TODO: What is the actual pattern, and do we
-          // need to test for an app supplied prefix?
-          return INNOCUOUS_STRING;
+          return security.polymer_resin.allowedIdentifierPattern_.test(v)
+              ? v
+              : INNOCUOUS_STRING;
         }),
     safeReplacement: INNOCUOUS_STRING,
-    typeToUnwrap: null,
-    unwrap: null
+    typeToUnwrap: goog.string.Const,
+    unwrap: goog.string.Const.unwrap
   };
 
 

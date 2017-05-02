@@ -1,0 +1,48 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="imports.js"></script>
+  <link rel="import" href="polymer-resin/polymer-resin.html" />
+  <script>
+    security.polymer_resin.allowIdentifierWithPrefix('safe-');
+  </script>
+  <title>Identifier Test</title>
+</head>
+<body>
+  <dom-module id="uses-identifiers">
+    <template>
+      <input id="{{x}}" name="{{x}}">:
+      <label html-for="{{x}}">{{x}}</label>
+    </template>
+    <script>
+      Polymer({
+        is: 'uses-identifiers',
+        properties: {
+          x: String
+        }
+      });
+    </script>
+  </dom-module>
+
+  <test-fixture id="identifier-test-fixture">
+    <template>
+      <uses-identifiers />
+    </template>
+  </test-fixture>
+</body>
+</html>
