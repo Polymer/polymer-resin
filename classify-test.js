@@ -12,11 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('classify_tests');
+goog.provide('classify_tests');
 
-var CustomElementClassification =
-    goog.require('security.polymer_resin.CustomElementClassification');
-var classifyElement = goog.require('security.polymer_resin.classifyElement');
+goog.require('security.polymer_resin.CustomElementClassification');
+goog.require('security.polymer_resin.classifyElement');
 
 suite(
     'classify_tests',
@@ -32,7 +31,7 @@ suite(
         test('test ' + query,
              function () {
                var el = elements.querySelector(query);
-               var classification = classifyElement(
+               var classification = security.polymer_resin.classifyElement(
                    el.localName, el.constructor);
                assert.equal(
                    classification,
@@ -43,52 +42,52 @@ suite(
 
       assertClassification(
           '#link',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'b',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'table',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'tr',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'td',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'th',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'div',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'img',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'input',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'ul',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'li',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
 
       assertClassification(
           'blink',
-          CustomElementClassification.LEGACY);
+          security.polymer_resin.CustomElementClassification.LEGACY);
 
       assertClassification(
           'my-custom',
-          CustomElementClassification.CUSTOM);
+          security.polymer_resin.CustomElementClassification.CUSTOM);
       // Custom-builtin are classified as builtin because builtin
       // properties are own properties.
       // Calling code should check for the presence of is="...".
       assertClassification(
           '#mylink',
-          CustomElementClassification.BUILTIN);
+          security.polymer_resin.CustomElementClassification.BUILTIN);
       assertClassification(
           'un-registered',
-          CustomElementClassification.CUSTOMIZABLE);
+          security.polymer_resin.CustomElementClassification.CUSTOMIZABLE);
     });

@@ -12,10 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('security.polymer_resin.one_attr_binding');
+goog.provide('security.polymer_resin.one_attr_binding');
 
-var Const = goog.require('goog.string.Const');
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeUrl');
+goog.require('goog.string.Const');
 
 suite(
     'OneAttrBinding',
@@ -36,8 +36,8 @@ suite(
 
       test('safe_url', function() {
         var link = oneAttrFixture.querySelector('a');
-        oneAttrFixture.x = SafeUrl.fromConstant(
-            Const.from('javascript:safe()'));
+        oneAttrFixture.x = goog.html.SafeUrl.fromConstant(
+            goog.string.Const.from('javascript:safe()'));
 
         assert.equal('javascript:safe()', link.href);
       });
@@ -47,7 +47,7 @@ suite(
         oneAttrFixture.x = 'javascript:evil()';
 
         assert.equal(
-            SafeUrl.INNOCUOUS_STRING,
+            goog.html.SafeUrl.INNOCUOUS_STRING,
             link.href);
       });
     });

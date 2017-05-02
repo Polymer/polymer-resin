@@ -12,7 +12,7 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('text_node_tests');
+goog.provide('text_node_tests');
 
 suite(
     'TestNodeTests',

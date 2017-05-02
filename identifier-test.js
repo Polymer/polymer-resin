@@ -12,9 +12,9 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('security.polymer_resin.identifier_test');
+goog.provide('security.polymer_resin.identifier_test');
 
-var Const = goog.require('goog.string.Const');
+goog.require('goog.string.Const');
 
 suite(
     'Identifier',
@@ -58,7 +58,7 @@ suite(
 
       test('allowed_constant', function() {
         // constant strings allowed
-        assertId('my-id', Const.from('my-id'));
+        assertId('my-id', goog.string.Const.from('my-id'));
       });
 
       test('disallowed', function() {

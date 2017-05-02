@@ -12,10 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('security.polymer_resin.one_late_attr_binding');
+goog.provide('security.polymer_resin.one_late_attr_binding');
 
-var Const = goog.require('goog.string.Const');
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeUrl');
+goog.require('goog.string.Const');
 
 suite(
     'OneLateAttrBinding',
@@ -39,7 +39,9 @@ suite(
 
       test('safe_url', function(done) {
         oneLateAttrFixture.items = [
-          SafeUrl.fromConstant(Const.from('javascript:safe()'))];
+          goog.html.SafeUrl.fromConstant(
+              goog.string.Const.from('javascript:safe()'))
+        ];
         flush(
             function () {
               var link = oneLateAttrFixture.querySelector('a');
@@ -53,7 +55,7 @@ suite(
         flush(function () {
           var link = oneLateAttrFixture.querySelector('a');
           assert.equal(
-              SafeUrl.INNOCUOUS_STRING,
+              goog.html.SafeUrl.INNOCUOUS_STRING,
               link.href);
           done();
         });

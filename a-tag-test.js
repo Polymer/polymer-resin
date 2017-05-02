@@ -12,10 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('a_tag_tests');
+goog.provide('a_tag_tests');
 
-var Const = goog.require('goog.string.Const');
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeUrl');
+goog.require('goog.string.Const');
 
 suite(
     'ATagtests',
@@ -38,8 +38,8 @@ suite(
       });
 
       test('safe_url', function() {
-        toCheck.safeUrl = SafeUrl.fromConstant(
-            Const.from('javascript:safe()'));
+        toCheck.safeUrl = goog.html.SafeUrl.fromConstant(
+            goog.string.Const.from('javascript:safe()'));
 
         assert.equal(
             getA('a2').href,

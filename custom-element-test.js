@@ -12,11 +12,11 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('custom_element_tests');
+goog.provide('custom_element_tests');
 
-var Const = goog.require('goog.string.Const');
-var SafeStyle = goog.require('goog.html.SafeStyle');
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeStyle');
+goog.require('goog.html.SafeUrl');
+goog.require('goog.string.Const');
 
 // This tests assignment to properties of a custom tag that are routed
 // throgh to elements of the shadow DOM.
@@ -93,9 +93,10 @@ suite(
       test('src_bad', function() {
         var jsUrl = 'javascript: evil :( "muhaha"  /*:*/)';
         customTag.src = jsUrl;
-        assert.equal(SafeUrl.INNOCUOUS_STRING,
+        assert.equal(goog.html.SafeUrl.INNOCUOUS_STRING,
                      decomposed.dynLink.href, 'a href dynamic');
-        assert.equal(SafeUrl.INNOCUOUS_STRING, decomposed.img.src, 'img src');
+        assert.equal(goog.html.SafeUrl.INNOCUOUS_STRING,
+                     decomposed.img.src, 'img src');
       });
 
       test('num_not_stringified_before_use', function() {
@@ -110,7 +111,8 @@ suite(
       });
 
       test('safe_css', function() {
-        customTag.css = SafeStyle.fromConstant(Const.from('color: red;'));
+        customTag.css = goog.html.SafeStyle.fromConstant(
+            goog.string.Const.from('color: red;'));
         assert.isOk(
             decomposed.outerDiv.style.cssText.indexOf('color') >= 0,
             decomposed.outerDiv.style.cssText);
@@ -124,8 +126,8 @@ suite(
       });
 
       test('safe_url_passed_to_plain_text_attribute', function() {
-        customTag.title = SafeUrl.fromConstant(
-            Const.from('http://example.com/'));
+        customTag.title = goog.html.SafeUrl.fromConstant(
+            goog.string.Const.from('http://example.com/'));
         assert.equal('http://example.com/', decomposed.img.alt);
       });
     });

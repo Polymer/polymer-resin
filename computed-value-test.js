@@ -19,9 +19,9 @@
  * and gets the computed value in time to reject unsafe values.
  */
 
-goog.module('security.polymer_resin.computed_value_tests');
+goog.provide('security.polymer_resin.computed_value_tests');
 
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeUrl');
 
 suite(
     'ComputedValueTests',

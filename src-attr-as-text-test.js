@@ -12,10 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('security.polymer_resin.src_attr_as_text');
+goog.provide('security.polymer_resin.src_attr_as_text');
 
-var Const = goog.require('goog.string.Const');
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeUrl');
+goog.require('goog.string.Const');
 
 suite(
     'SrcAttrAsText',
@@ -41,8 +41,8 @@ suite(
       });
 
       test('typed_string_is_unwrapped', function() {
-        srcAttrAsTextFixture.src = SafeUrl.fromConstant(
-            Const.from('safe/value'));
+        srcAttrAsTextFixture.src = goog.html.SafeUrl.fromConstant(
+            goog.string.Const.from('safe/value'));
         // TODO(msamuel): the safe value is being interpolated into the
         // larger text node before the text content reaches
         // computeFinalAnnotationValue.  This seems different from that

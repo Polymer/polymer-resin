@@ -12,10 +12,10 @@
  * http://polymer.github.io/PATENTS.txt
  */
 
-goog.module('security.polymer_resin.attr_property_aliasing_tests');
+goog.provide('security.polymer_resin.attr_property_aliasing_tests');
 
-var Const = goog.require('goog.string.Const');
-var SafeUrl = goog.require('goog.html.SafeUrl');
+goog.require('goog.html.SafeUrl');
+goog.require('goog.string.Const');
 
 suite(
     'AttrPropertyAliasingTests',
@@ -37,9 +37,10 @@ suite(
 
 
       var TYPED_STRING_TEXT = 'javascript:safe(this)';
-      var SAFE_ACTION = SafeUrl.fromConstant(Const.from(TYPED_STRING_TEXT));
+      var SAFE_ACTION = goog.html.SafeUrl.fromConstant(
+          goog.string.Const.from(TYPED_STRING_TEXT));
       var UNSAFE_ACTION = 'javascript:evil()';
-      var INNOCUOUS_ACTION = SafeUrl.INNOCUOUS_STRING;
+      var INNOCUOUS_ACTION = goog.html.SafeUrl.INNOCUOUS_STRING;
 
       test('innocuous_action_via_attribute', function() {
         buttons.setAttribute('action', '/safe');
