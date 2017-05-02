@@ -19,7 +19,6 @@
 
 goog.provide('security.polymer_resin.allowIdentifierWithPrefix');
 
-goog.require('goog.debug');
 goog.require('goog.dom.NodeType');
 goog.require('goog.html.SafeHtml');
 goog.require('goog.html.SafeScript');
@@ -208,9 +207,9 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
             }
           }
         }
-        if (goog.debug.DEBUG && 'undefined' !== typeof console) {
-          console.error('Failed to sanitize text %o in %o',
-                        value, node.parentElement);
+        if (goog.DEBUG && 'undefined' !== typeof console) {
+          console.warn('Failed to sanitize text %o in %o',
+                       value, node.parentElement);
         }
         return INNOCUOUS_STRING;
       }
@@ -288,9 +287,9 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
           return safeValue;
         }
       }
-      if (goog.debug.DEBUG && 'undefined' !== typeof console) {
-        console.error('Failed to sanitize <%s %s="%o">',
-                      elementName, attrName, value);
+      if (goog.DEBUG && 'undefined' !== typeof console) {
+        console.warn('Failed to sanitize <%s %s="%o">',
+                     elementName, attrName, value);
       }
       return safeValue;
     }
