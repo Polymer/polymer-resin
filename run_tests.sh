@@ -14,7 +14,7 @@ echo SRC_DIR=$SRC_DIR
 [ -d "$SRC_DIR" ]
 [ -f "$SRC_DIR/polymer-resin.js" ]
 
-export TEST_ROOT_DIR="$(mktemp -d -t wct_root)"
+export TEST_ROOT_DIR="$(mktemp -d "$TMPDIR"/wct_root.XXXXXXXXXX)"
 [ -d "$TEST_ROOT_DIR" ]
 
 
@@ -51,7 +51,7 @@ echo '
   <body>
     <script>
       WCT.loadSuites([' \
-> "$TEST_SUITE_HTML"
+        > "$TEST_SUITE_HTML"
 
 for f in *test.html; do
   echo "          '../$f'," >> "$TEST_SUITE_HTML"
@@ -62,7 +62,7 @@ echo '
     </script>
   </body>
 </html>' \
->> "$TEST_SUITE_HTML"
+  >> "$TEST_SUITE_HTML"
 
 
 popd
@@ -73,8 +73,6 @@ cp -r "$SRC_DIR"/bower_components/webcomponentsjs \
   "$TEST_ROOT_DIR"/webcomponentsjs
 cp -r "$SRC_DIR"/bower_components/polymer \
   "$TEST_ROOT_DIR"/polymer
-cp -r "$SRC_DIR"/bower_components/shadycss \
-  "$TEST_ROOT_DIR"/shadycss
 
 
 # TODO: allow running the tests against both debug and non-debug
