@@ -1,4 +1,4 @@
-# Polymer Resin
+# Polymer Resin [![Build Status][build-status]][build-dashboard]
 
 XSS mitigation for Polymer webcomponents.
 
@@ -28,14 +28,14 @@ and other processes with edited files as inputs.
 
 In most template languages, one defines templates, but in Polymer one defines
 custom elements. This means that there is not a closed class of HTML elements
-and attributes about which we can reason as there is for [Closure
-Templates auto-sanitizer][soy-sec].
+and attributes about which we can reason as there is for [Closure Templates
+auto-sanitizer][soy-sec].
 
 
 ## Goal
 
-Make it easy for security auditors to quickly check whether a project's
-custom element definitions fall into a known-safe subset of Polymer.
+Make it easy for security auditors to quickly check whether a project's custom
+element definitions fall into a known-safe subset of Polymer.
 
 ## Security Assumptions
 
@@ -279,18 +279,23 @@ publish poly-resin as an NPM module under the name TBD.
 ## Running tests from the command line
 
 Per https://github.com/Polymer/web-component-tester
-make sure that $PWD/node_modules/.bin is on your path then run
+make sure that you have bower installed and have run `bower update`.
+Then use the test script.
 
-$ wct
-
+```bash
+$ ./run_tests.sh
+```
 
 # Running tests in the browser
 
 From the project root
 
-$ python -m SimpleHTTPServer 8000
+```bash
+$ ./run_tests.sh -p -l chrome
+```
 
-Then browse to http://localhost:8000/test/
+causes it to keep the server open.
+See the log output for the localhost URL to browse to.
 
 
 
@@ -304,3 +309,5 @@ Then browse to http://localhost:8000/test/
 [safe-html-types-js]: https://google.github.io/closure-library/api/goog.html.SafeHtml.html
 [autosan]: https://security.googleblog.com/2009/03/reducing-xss-by-way-of-automatic.html
 [soy-sec]: https://developers.google.com/closure/templates/docs/security
+[build-status]: https://travis-ci.org/Polymer/polymer-resin.svg?branch=master
+[build-dashboard]: https://travis-ci.org/Polymer/polymer-resin
