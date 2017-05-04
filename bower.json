@@ -22,7 +22,9 @@
 
   "moduleType": "globals",
   "main": [
-    "dist/npm_standalone.js"
+    "polymer-resin.html",
+    "dist/standalone.html",
+    "dist/standalone_debug.html"
   ],
   "ignore": [
     "**/.*",
