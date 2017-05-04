@@ -23,8 +23,7 @@
   "moduleType": "globals",
   "main": [
     "polymer-resin.html",
-    "dist/standalone.html",
-    "dist/standalone_debug.html"
+    "polymer-resin.js"
   ],
   "ignore": [
     "**/.*",
