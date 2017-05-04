@@ -2908,31 +2908,7 @@ security.polymer_resin.allowIdentifierWithPrefix = function(prefix) {
 };
 security.polymer_resin.allowedIdentifierPattern_ = /^$/;
 (function() {
-  var VALUE_HANDLERS_ = [];
-  VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:null, safeReplacement:null, typeToUnwrap:null, unwrap:null};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:goog.string.htmlEscape, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(v) {
-    return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
-  }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeUrl, unwrap:goog.html.SafeUrl.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:function() {
-    return goog.html.SafeUrl.INNOCUOUS_STRING;
-  }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.TrustedResourceUrl, unwrap:goog.html.TrustedResourceUrl.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_STYLE] = {filter:function() {
-    return goog.html.SafeStyle.INNOCUOUS_STRING;
-  }, safeReplacement:goog.html.SafeStyle.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeStyle, unwrap:goog.html.SafeStyle.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:function() {
-    return "/*zClosurez*/";
-  }, safeReplacement:"/*zClosurez*/", typeToUnwrap:goog.html.SafeScript, unwrap:goog.html.SafeScript.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function() {
-    return "zClosurez";
-  }, safeReplacement:"zClosurez", typeToUnwrap:null, unwrap:null};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:function() {
-    return "/*zClosurez*/";
-  }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(v) {
-    return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : "zClosurez";
-  }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
-  window.addEventListener("HTMLImportsLoaded", function() {
+  function initResin() {
     function getAttributeValue(name) {
       return this.getAttribute(name);
     }
@@ -3031,6 +3007,31 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
         throw Error("Cannot install sanitizeDOMValue.  Is Polymer frozen?");
       }
     }
-  });
+  }
+  var VALUE_HANDLERS_ = [];
+  VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:null, safeReplacement:null, typeToUnwrap:null, unwrap:null};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:goog.string.htmlEscape, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(v) {
+    return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
+  }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeUrl, unwrap:goog.html.SafeUrl.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:function() {
+    return goog.html.SafeUrl.INNOCUOUS_STRING;
+  }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.TrustedResourceUrl, unwrap:goog.html.TrustedResourceUrl.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_STYLE] = {filter:function() {
+    return goog.html.SafeStyle.INNOCUOUS_STRING;
+  }, safeReplacement:goog.html.SafeStyle.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeStyle, unwrap:goog.html.SafeStyle.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:function() {
+    return "/*zClosurez*/";
+  }, safeReplacement:"/*zClosurez*/", typeToUnwrap:goog.html.SafeScript, unwrap:goog.html.SafeScript.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function() {
+    return "zClosurez";
+  }, safeReplacement:"zClosurez", typeToUnwrap:null, unwrap:null};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:function() {
+    return "/*zClosurez*/";
+  }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(v) {
+    return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : "zClosurez";
+  }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
+  "undefined" !== typeof Polymer && Polymer.version ? initResin() : window.addEventListener("HTMLImportsLoaded", initResin);
 })();
 

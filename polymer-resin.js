@@ -497,5 +497,9 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
 
 
   // This assumes that imports have not already fired.
-  window.addEventListener('HTMLImportsLoaded', initResin);
+  if (typeof Polymer !== 'undefined' && Polymer.version) {
+    initResin();
+  } else {
+    window.addEventListener('HTMLImportsLoaded', initResin);
+  }
 }());
