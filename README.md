@@ -133,38 +133,74 @@ content is human-readable HTML.
 
 ## Life of a Polymer+Resin page
 
-Normally, when an HTML page is parsed, the browser knows that, for an <A>
+Normally, when an HTML page is parsed, the browser knows that, for an `<A>`
 element, it creates an *HTMLAElement* instance. The [custom elements draft
 specification](https://www.w3.org/TR/custom-elements/) explicitly allows parsing
 of `<my-custom>` before the JavaScript that will eventually define and register
 *HTMLMyCustomElement*.
 
-Polymer apps seem to be a bit more structured. `polygerrit/app/index.html` does
+<a name="custom-element-example"></a>
 
-1.  Enter `<html><head>`
-2.  Load webcomponentsjs
-3.  Preload gr-app.js, the element handler definition for the main app tag
-4.  HTML import the core polymer/polymer.html library
-5.  Load other dependencies for the gr-app element and define the template for
-    its shadow DOM
-6.  Enter the `<body>` element
-7.  Instantiate the top-level `<gr-app>` element
+```html
+<head>
+<script src="webcomponents-lite.js"></script>
+<link rel="import" href="custom-element.html">
+<body>
+<custom-element id="app"></custom-element>
+```
 
-If we run immediately after webcomponentsjs is loaded, then we stand in a good
-place to respond to custom element instantiation and initialization:
+The life-cycle of a polymer app often looks like
+
+1.  Synchronously load *webcomponents-lite.js*
+2.  Start parsing HTML imported page *custom-element.html*
+3.  Indirectly HTML import load *polymer.html* which provides a framework for
+    custom elements and has the hooks we need to intercept bound data values.
+4.  Finish processing *custom-element.html* which registers the custom element
+    definition.
+5.  Instantiate `<custom-element>`
 
 ```js
 window.addEventListener('WebComponentsReady', …)
 ```
 
-captures this, but webcomponentsjs just kicks off a bunch of asynchronous loads.
+seems like it might run at the right time, and the `'HTMLImportsLoaded'` event
+is another good candidate.
 
-```js
-window.addEventListener('HTMLImportsLoaded', …)
-```
+Both run after the HTML element definitions have been loaded, and before the app
+has been provisioned with state loaded from the server, but state that is
+initialized based on location or query parameters will already have reached
+custom elements, meaning [reflected XSS][reflected-xss] is still possible.
 
-seems to handle TODO: Find documentation for this event and figure out the
-minimal set of limitations on app booting this choice of event imposes.
+To prevent reflected XSS, we need to initialize after Polymer is loaded, and
+before the first custom element definition is registered (except for those
+defined by Polymer internally).
+
+--------------------------------------------------------------------------------
+
+`polygerrit-ui/app/index.html` is a good example of a polymer app. The column on
+the left shows the app before resin is added, and the column on the right shows
+how we want it to work with Resin. Note that *polymer.html* is not explicitly
+loaded by the *index.html* page; it's loaded via a transitive HTML import.
+
+Without Resin                  | With Resin
+------------------------------ | -------------------------------------
+Enter `<html><head>`           | ditto
+Load *webcomponents-lite.js*   | ditto
+                               | HTML import *polymer.html*
+                               | Load and configure *polymer-resin.js*
+Preload `<gr-app>` definition  | ditto
+HTML import *polymer.html*     |
+Load other element definitions | ditto
+Instantiate `<gr-app>` element | ditto
+
+--------------------------------------------------------------------------------
+
+We provide a *polymer-resin.html*, an importable HTML file that does two things.
+
+1.  HTML import *polymer.html* so that we have a place to install the hooks
+2.  synchronously load a script to install the hooks
+
+## Bound data handler
 
 The handler receives
 
@@ -273,8 +309,43 @@ There are a few minor failure modes:
 
 ## Deployment
 
-Gerrit builds via bazel but loads most of its scripts via npm/bower. We will
-publish poly-resin as an NPM module under the name TBD.
+Gerrit builds via bazel but loads most of its scripts via bower. Polymer resin
+is available as a [bower
+component](http://bower.herokuapp.com/packages/polymer-resin).
+
+There are three deployment options.
+
+1. `polymer-resin.html` which is best for closure-friendly polymer apps.
+2. `standalone/polymer-resin.html` which includes a single JS bundle that
+   includes pre-compiled JS.
+3. `standalone/polymer-resin-debug.html` which is like the previous file
+   but the JS is not obfuscated and it logs to the console whenever a
+   property value is rejected.
+
+----
+
+To deploy in the [custom element example](#custom-element-example)
+the head changes from
+
+```html
+<script src="webcomponents-lite.js"></script>
+<link rel="import" href="custom-element.html">
+```
+
+to
+
+```html
+<script src="webcomponents-lite.js"></script>
+<link rel="import" href="polymer-resin/polymer-resin.html">
+<script>// This comment is essential to the security of this project.</script>
+<link rel="import" href="custom-element.html">
+```
+
+or with one of the standalone variants above.
+The `<script>` is required because it forces the imports above it to be
+handled before that of *custom-element.html*.
+The exact text is unimportant but it must be non-empty.
+
 
 ## Running tests from the command line
 
@@ -299,6 +370,7 @@ See the log output for the localhost URL to browse to.
 
 
 
+[reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary
 [webcomponents]: https://developer.mozilla.org/en-US/docs/Web/Web_Components#Specifications
 [polygerrit-ui]: https://gerrit.googlesource.com/gerrit/+/master/polygerrit-ui/app/
 [poly-v1]: https://github.com/Polymer/polymer/blob/7e732f6b2dc2fd49f78a3993828283d997de63bd/src/standard/effectBuilder.html#L343
