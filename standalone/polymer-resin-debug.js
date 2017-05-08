@@ -1,4 +1,4 @@
-var goog = goog || {};
+'use strict';var goog = goog || {};
 goog.global = this;
 goog.isDef = function(val) {
   return void 0 !== val;
