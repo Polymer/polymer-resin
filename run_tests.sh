@@ -77,8 +77,8 @@ cp -r "$SRC_DIR"/bower_components/polymer \
 
 # TODO: allow running the tests against both debug and non-debug
 # versions.
-ln "$SRC_DIR/dist/standalone_debug.js" \
-  "$TEST_ROOT_DIR/polymer-resin/polymer-resin.js"
+ln "$SRC_DIR"/standalone/polymer-resin-debug.js \
+  "$TEST_ROOT_DIR"/polymer-resin/polymer-resin.js
 
 
 # Invoke wct
