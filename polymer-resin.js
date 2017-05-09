@@ -39,7 +39,7 @@ goog.require('security.polymer_resin.hintUsesDeprecatedRegisterElement');
  * Maps Safe HTML types to handlers.
  *
  * @typedef {!{
- *   filter:          ?function(string):string,
+ *   filter:          ?function(string, string, string):string,
  *   safeReplacement: ?string,
  *   typeToUnwrap:    ?Function,
  *   unwrap:          ?function(?):string
@@ -281,7 +281,7 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
             : String(value);
         safeValue =
             valueHandler.filter
-            ? valueHandler.filter(stringValue)
+            ? valueHandler.filter(elementName, attrName, stringValue)
             : stringValue;
         if (safeValue !== valueHandler.safeReplacement) {
           return safeValue;
@@ -390,7 +390,19 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
   VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {
     // Assigning a string to srchtml is the same as
     // assigning a text node.
-    filter: goog.string.htmlEscape,
+    filter: (
+        /**
+         * Converts plain text to HTML that parses to a text node with
+         * equivalent content.
+         *
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
+         * @return {string}
+         */
+        function plainTextToHtml(a, e, v) {
+          return goog.string.htmlEscape(v);
+        }),
     safeReplacement: null,
     typeToUnwrap: goog.html.SafeHtml,
     unwrap: goog.html.SafeHtml.unwrap
@@ -399,10 +411,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
     filter: (
         /**
          * Allows safe URLs through, but rejects unsafe ones.
-         * @param {string} v
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
          * @return {string}
          */
-        function allowSafeUrl(v) {
+        function allowSafeUrl(e, a, v) {
           // TODO: Can we do without creating a SafeUrl instance?
           return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
         }),
@@ -416,10 +430,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
          * Just returns the safe replacement value because we have no
          * way of declaring that a raw string is a trusted resource so
          * rely on RTTI in all cases.
-         * @param {string} v
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
          * @return {string}
          */
-        function disallowTrustedResourceUrl(v) {
+        function disallowTrustedResourceUrl(e, a, v) {
           return goog.html.SafeUrl.INNOCUOUS_STRING;
         }),
     safeReplacement: goog.html.SafeUrl.INNOCUOUS_STRING,
@@ -431,10 +447,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
         /**
          * Just returns the safe replacement value since we have no
          * way of testing that a raw string is a safe style.
-         * @param {string} v
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
          * @return {string}
          */
-        function disallowSafeStyle(v) {
+        function disallowSafeStyle(e, a, v) {
           return goog.html.SafeStyle.INNOCUOUS_STRING;
         }),
     safeReplacement: goog.html.SafeStyle.INNOCUOUS_STRING,
@@ -446,10 +464,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
         /**
          * Just returns the safe replacement value since we have no
          * way of testing that a raw string is a safe script.
-         * @param {string} v
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
          * @return {string}
          */
-        function disallowSafeScript(v) {
+        function disallowSafeScript(e, a, v) {
           return INNOCUOUS_SCRIPT;
         }),
     safeReplacement: INNOCUOUS_SCRIPT,
@@ -457,10 +477,21 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
     unwrap: goog.html.SafeScript.unwrap
   };
   VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {
-    filter: function (v) {
-      // TODO: need value sets in contracts.js
-      return INNOCUOUS_STRING;
-    },
+    filter: (
+        /**
+         * Checks that the input is allowed for the given attribute on the
+         * given element.
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
+         * @return {string} v lowercased if allowed, or the safe replacement
+         *   otherwise.
+         */
+        function (e, a, v) {
+          var lv = String(v).toLowerCase();
+          return security.html.contracts.isEnumValueAllowed(e, a, lv)
+              ? lv : INNOCUOUS_STRING;
+        }),
     safeReplacement: INNOCUOUS_STRING,
     typeToUnwrap: null,
     unwrap: null
@@ -469,10 +500,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
     filter: (
         /**
          * Just returns the safe replacement value.
-         * @param {string} v
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
          * @return {string}
          */
-        function disallow(v) {
+        function disallow(e, a, v) {
           return INNOCUOUS_SCRIPT;
         }),
     safeReplacement: INNOCUOUS_STRING,
@@ -482,10 +515,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
   VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {
     filter: (
         /**
-         * @param {string} v
+         * @param {string} e element name
+         * @param {string} a attribute name
+         * @param {string} v attribute value
          * @return {string}
          */
-        function allowIdentifier(v) {
+        function allowIdentifier(e, a, v) {
           return security.polymer_resin.allowedIdentifierPattern_.test(v)
               ? v
               : INNOCUOUS_STRING;

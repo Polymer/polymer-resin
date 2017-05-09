@@ -2975,7 +2975,7 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
         if (valueHandler.typeToUnwrap && value instanceof valueHandler.typeToUnwrap) {
           return valueHandler.unwrap(value);
         }
-        var stringValue = value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value), safeValue = valueHandler.filter ? valueHandler.filter(stringValue) : stringValue;
+        var stringValue = value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value), safeValue = valueHandler.filter ? valueHandler.filter(elementName, attrName, stringValue) : stringValue;
         if (safeValue !== valueHandler.safeReplacement) {
           return safeValue;
         }
@@ -3013,8 +3013,10 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
   }
   var VALUE_HANDLERS_ = [];
   VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:null, safeReplacement:null, typeToUnwrap:null, unwrap:null};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:goog.string.htmlEscape, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(v) {
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:function(a, e, v) {
+    return goog.string.htmlEscape(v);
+  }, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(e, a, v) {
     return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
   }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeUrl, unwrap:goog.html.SafeUrl.unwrap};
   VALUE_HANDLERS_[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:function() {
@@ -3026,13 +3028,14 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
   VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:function() {
     return "/*zClosurez*/";
   }, safeReplacement:"/*zClosurez*/", typeToUnwrap:goog.html.SafeScript, unwrap:goog.html.SafeScript.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function() {
-    return "zClosurez";
+  VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function(e, a, v) {
+    var lv = String(v).toLowerCase();
+    return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : "zClosurez";
   }, safeReplacement:"zClosurez", typeToUnwrap:null, unwrap:null};
   VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:function() {
     return "/*zClosurez*/";
   }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(v) {
+  VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
     return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : "zClosurez";
   }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
   "undefined" !== typeof Polymer && Polymer.version ? initResin() : window.addEventListener("HTMLImportsLoaded", initResin);
