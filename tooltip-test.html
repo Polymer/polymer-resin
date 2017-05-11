@@ -1,0 +1,69 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <script src="/components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script src="/components/web-component-tester/browser.js"></script>
+  <link rel="import" href="/components/polymer/polymer.html" />
+  <script src="polymer-resin.js"></script>
+  <script src="tooltip-test.js"></script>
+  <title>Tooltip Tests</title>
+</head>
+<body>
+  <dom-module id="tooltip-test">
+    <!-- This is based on polygerrits gr-tooltip element.
+         There are a few notable features.
+         1. There is a text node whose parent is the shadow root.
+         2. There are variable substitutions and expressions in CSS.
+         3. The property is mitigated by an observer.
+      -->
+    <template>
+      <style>
+        .foo {
+          margin-right: var(--tooltip-test-width);
+          margin-left: calc(50% - var(--tooltip-test-width));
+        }
+      </style>
+      [[content]]
+      <span class="foo"></span>
+    </template>
+    <script>
+      Polymer({
+        is: 'tooltip-test',
+        properties: {
+          ttWidth: {
+            type: String,
+            observer: '_updateWidth'
+          },
+          content: String
+        },
+
+        _updateWidth: function (newWidth) {
+          this.customStyle['--tooltip-test-width'] = newWidth;
+          this.updateStyles();
+        },
+      });
+    </script>
+  </dom-module>
+
+  <test-fixture id="tooltip-test-fixture">
+    <template>
+      <tooltip-test />
+    </template>
+  </test-fixture>
+</body>
+</html>
