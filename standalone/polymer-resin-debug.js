@@ -2815,17 +2815,21 @@ security.html.contracts.typeOfAttribute = function(elName, attrName, getValue) {
     if (Object.hasOwnProperty.call(elementInfo, attrName)) {
       var attrInfoArray = elementInfo[attrName];
       if (attrInfoArray instanceof Array) {
-        for (var valueCache = null, i = 0, n = attrInfoArray.length; i < n; ++i) {
+        for (var valueCache = null, requiredValueNotFound = !1, i = 0, n = attrInfoArray.length; i < n; ++i) {
           var attrInfo = attrInfoArray[i], contingentAttr = attrInfo.contingentAttribute;
           if (!contingentAttr) {
             return attrInfo.contract;
           }
           null === valueCache && (valueCache = {});
-          if ((Object.hasOwnProperty.call(valueCache, contingentAttr) ? valueCache[contingentAttr] : valueCache[contingentAttr] = getValue(contingentAttr)) === attrInfo.requiredValue) {
+          var actualValue = Object.hasOwnProperty.call(valueCache, contingentAttr) ? valueCache[contingentAttr] : valueCache[contingentAttr] = getValue(contingentAttr);
+          if (actualValue === attrInfo.requiredValue) {
             return attrInfo.contract;
           }
+          null == actualValue && (requiredValueNotFound = !0);
         }
-        return null;
+        if (requiredValueNotFound) {
+          return null;
+        }
       }
     }
   }
@@ -2844,8 +2848,8 @@ security.html.contracts.GLOBAL_ATTRS_ = {align:security.html.contracts.AttrType.
 dir:security.html.contracts.AttrType.ENUM, disabled:security.html.contracts.AttrType.NONE, draggable:security.html.contracts.AttrType.NONE, face:security.html.contracts.AttrType.NONE, "for":security.html.contracts.AttrType.IDENTIFIER, frameborder:security.html.contracts.AttrType.NONE, height:security.html.contracts.AttrType.NONE, hidden:security.html.contracts.AttrType.NONE, href:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, id:security.html.contracts.AttrType.IDENTIFIER, ismap:security.html.contracts.AttrType.NONE, 
 label:security.html.contracts.AttrType.NONE, lang:security.html.contracts.AttrType.NONE, loop:security.html.contracts.AttrType.NONE, max:security.html.contracts.AttrType.NONE, maxlength:security.html.contracts.AttrType.NONE, min:security.html.contracts.AttrType.NONE, multiple:security.html.contracts.AttrType.NONE, muted:security.html.contracts.AttrType.NONE, name:security.html.contracts.AttrType.IDENTIFIER, placeholder:security.html.contracts.AttrType.NONE, preload:security.html.contracts.AttrType.NONE, 
 rel:security.html.contracts.AttrType.NONE, required:security.html.contracts.AttrType.NONE, reversed:security.html.contracts.AttrType.NONE, role:security.html.contracts.AttrType.NONE, rows:security.html.contracts.AttrType.NONE, rowspan:security.html.contracts.AttrType.NONE, selected:security.html.contracts.AttrType.NONE, shape:security.html.contracts.AttrType.NONE, size:security.html.contracts.AttrType.NONE, sizes:security.html.contracts.AttrType.NONE, span:security.html.contracts.AttrType.NONE, spellcheck:security.html.contracts.AttrType.NONE, 
-src:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, start:security.html.contracts.AttrType.NONE, step:security.html.contracts.AttrType.NONE, style:security.html.contracts.AttrType.SAFE_STYLE, tabindex:security.html.contracts.AttrType.NONE, target:security.html.contracts.AttrType.ENUM, title:security.html.contracts.AttrType.NONE, translate:security.html.contracts.AttrType.NONE, valign:security.html.contracts.AttrType.NONE, value:security.html.contracts.AttrType.NONE, width:security.html.contracts.AttrType.NONE, 
-wrap:security.html.contracts.AttrType.NONE};
+src:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, start:security.html.contracts.AttrType.NONE, step:security.html.contracts.AttrType.NONE, style:security.html.contracts.AttrType.SAFE_STYLE, summary:security.html.contracts.AttrType.NONE, tabindex:security.html.contracts.AttrType.NONE, target:security.html.contracts.AttrType.ENUM, title:security.html.contracts.AttrType.NONE, translate:security.html.contracts.AttrType.NONE, valign:security.html.contracts.AttrType.NONE, value:security.html.contracts.AttrType.NONE, 
+width:security.html.contracts.AttrType.NONE, wrap:security.html.contracts.AttrType.NONE};
 security.html.contracts.ELEMENT_CONTRACTS_ = {a:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, area:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, audio:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, blockquote:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, button:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, 
 command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], max:[{contract:security.html.contracts.AttrType.NONE}], 
 min:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], step:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
@@ -2915,7 +2919,8 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
 (function() {
   function initResin() {
     function getAttributeValue(name) {
-      return this.getAttribute(name);
+      var value = this.getAttribute(name);
+      return !value || /[\[\{]/.test(name) ? null : value;
     }
     function sanitize(node, name, type, value) {
       if (!value) {

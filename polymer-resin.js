@@ -90,12 +90,19 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
     /**
      * @param {string} name
      * @this {!Element}
-     * @return {*}
+     * @return {*} null indicates unknown.
      */
     function getAttributeValue(name) {
-      // TODO: do we need to convert property names
-      // to attribute names here?
-      return this.getAttribute(name);
+      var value = this.getAttribute(name);
+      if (!value || /[\[\{]/.test(name)) {
+        // If a value contains '[' or '{',
+        // assume that it is a bound attribute for which
+        // we have not yet computed a value.
+        // The consumer of this function cares only about
+        // keyword values, so this loses us nothing.
+        return null;
+      }
+      return value;
     }
 
     /**
