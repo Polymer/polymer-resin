@@ -1607,6 +1607,8 @@ goog.array.copyByIndex = function(arr, index_arr) {
 goog.array.concatMap = function(arr, f, opt_obj) {
   return goog.array.concat.apply([], goog.array.map(arr, f, opt_obj));
 };
+goog.dom.HtmlElement = function() {
+};
 goog.dom.TagName = function(tagName) {
   this.tagName_ = tagName;
 };
@@ -2402,7 +2404,7 @@ goog.html.SafeUrl.fromTelUrl = function(telUrl) {
 goog.html.SafeUrl.fromTrustedResourceUrl = function(trustedResourceUrl) {
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(goog.html.TrustedResourceUrl.unwrap(trustedResourceUrl));
 };
-goog.html.SAFE_URL_PATTERN_ = /^(?:(?:https?|mailto|ftp):|[^&:/?#]*(?:[/?#]|$))/i;
+goog.html.SAFE_URL_PATTERN_ = /^(?:(?:https?|mailto|ftp):|[^:/?#]*(?:[/?#]|$))/i;
 goog.html.SafeUrl.sanitize = function(url) {
   if (url instanceof goog.html.SafeUrl) {
     return url;
