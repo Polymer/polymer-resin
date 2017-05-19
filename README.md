@@ -65,26 +65,56 @@ For Polymer, we assume that
 3.  These two communities overlap to a great degree and are (similar to above)
     large enough that we cannot assume uniform rigor in applying secure
     practices.
-4.  A custom element’s security consequences arise primarily where custom
-    attributes and properties whose values can be influenced by an attacker
-    reach builtin elements either
-    *   because a JS function (constructor, event handler, property
-        setter/getter) explicitly manipulates a built-in HTML element or
-        attribute, OR
-    *   because a custom element subclasses a builtin element, e.g.
-        `myCustomElement.onClick = ...` OR
-    *   TODO: Customized built-in elements and the `is=”element-name”`
-        meta-attribute.
+4.  The novel security consequences of webcomponents arise because they expand
+    the ways in which *unchecked values* can reach *builtin sinks*.
+
+    A builtin sink is a property or attribute that can be set by user code and
+    is handled specially by the browser in a manner that may have security
+    implications, in particular, attacker-controlled script execution.
+    Builtin sinks tend to correspond to IDL attributes that are annotated with
+    [*Reflect*][idl-reflect],
+    [*CustomElementCallbacks*][idl-custom-element-callbacks], or
+    [*CEReactions*][idl-cereactions].
+
+    There is a hazard whenever an *unchecked value* reaches a builtin sink. An
+    unchecked value is one that could be controlled by an attacker; it might
+    originate from outside an [origin][same-origin] controlled by the
+    application author.
+    For instance, the `href` attribute of an *HTMLAnchorElement* is a
+    security-relevant sink; if it can be reached by a value entirely under an
+    attacker's control, that attacker can execute arbitrary script in the
+    context of the user's browser session through injection of a `javascript:`
+    URL.
+
+    There are many ways that JavaScript can manipulate builtin sinks, and we
+    will use [JSConformance][jsconf] policies to guide developers towards safe
+    patterns, and focus instead on web-component specific hazards including
+
+    *   an unchecked value reaches a builtin sink on a normal HTML element, e.g.
+        `<a href="[[...]]">` where `[[...]]` can be controlled by an attacker;
+    *   an unchecked value reaches a builtin sink inherited by a custom element,
+        e.g. `<my-custom-element onclick="[[...]]">`;
+    *   an unchecked value reaches a custom property on a custom element that is
+        then forwarded to a builtin-sink by element or framework code, e.g.
+        `<my-custom-element my-url="[[...]]">` and the custom element's shadow
+        DOM contains a builtin sink `<template><a href="[[myUrl]]"></template>`;
+    *   an unchecked value reaches a builtin sink on a customized-builtin
+        element either directly (`<a is="my-custom-link" href="[[...]]">`) or
+        indirectly (`<a is="my-custom-link" href="[[my-url]]"
+        my-url="[[...]]">`)
+    *   an unchecked value specifies a property name `<a [[...]]="some-value">`
+        or can specify the type of custom element `<a is="[[...]]">` or
+        `<[[...]] src="some-value">`.
 
 Our security goal is to allow element authors to write code that receives
-untrusted inputs, and routes them to security sensitive sinks without the risk
-of XSS. We do this by taking the burden of avoiding XSS off the authors and
-reviewers of large amounts of application code and move it into a small amount
-of vetted infrastructure code.
+unchecked values, and routes them to builtin sinks without the risk of XSS,
+redirection attacks, etc. We do this by taking the burden of avoiding these
+attacks off the authors and reviewers of large amounts of application code and
+move it into a small amount of vetted infrastructure code.
 
-It is not a goal to address direct writes via `HTMLElement.setAttribute(...)` or
-assignment to `HTMLElement.innerHTML` as those are well handled by existing
-[JSConformance][jsconf] policies.
+It is not a goal to address direct access to builtin sinks by JavaScript (e.g.
+`HTMLElement.setAttribute(...)` or `HTMLElement.innerHTML = ...`) as those are
+well handled by existing [JSConformance][jsconf] policies.
 
 ## High-Level Design
 
@@ -101,14 +131,16 @@ by Polymer. A security auditor can then check that a Polymer project is properly
 configured to load these hooks, and check that the project uses
 [JSConformance][jsconf] to prevent forgery of safe string values.
 
-We provide a standalone importable HTML file `poly-resin.html` that
+We provide a standalone importable HTML file `polymer-resin.html` that
+implements `Polymer.sanitizeDOMValue` to intercept assignments to builtin sinks
+given values that originate from expressions specified in Polymer HTML. We also
+provide a Polymer v1 shim that checks `Polymer.version` to see if it needs to
+patch `Polymer.Base._computeFinalAnnotationValue` to call the same sanitizer.
 
-1.  implements `sanitizeDOMValue` to intercept security-relevant attributes and
-    properties (see below)
-2.  provides a Polymer v1 shim that wraps
-    `Polymer.Base._computeFinalAnnotationValue to call sanitizeDOMValue`
-3.  loads the above as appropriate on the *HtmlImportsLoaded* event
-4.  checks that it is running early in the page render process (TODO: how?)
+A security auditor should check that *polymer-resin* is running early in the
+page render process. It should load and initialize before the applications main
+element is instantiated so that it can intercept reflected XSS. Putting the HTML
+import or script load immediately after the load of framework code suffices.
 
 
 ### Text interpolation
@@ -226,8 +258,10 @@ When sanitizing a property or attribute value we
     *   For a builtin or customized-builtin element, it is a vanilla
         `document.createElement(builtinElementName)`.
     *   For legacy elements, treat as builtins.
-    *   TODO: for customizable elements, where the constructor has not been set,
-        assume the worst?
+    *   For customizable elements (those which meet the naming convention but
+        for which no custom element constructor has yet been registered), treat
+        as a custom element. Our analysis is dynamic, so we need not assume the
+        worst.
 4.  If the proxy does not have the named property in it, then allow any value
     without unwrapping or checking typed string values.
 5.  Otherwise, if the value is whitelisted according to the element/attribute
@@ -247,21 +281,21 @@ The `security.html.contracts` module captures builtin HTML element and attribute
 relationships, and we apply the following filters.
 
 Attribute Type       | Privileged Typed String Type | Raw Value Filter
--------------------- | ---------------------------- | --------------------------
+-------------------- | ---------------------------- | ----------------
 NONE                 | none                         | allow
 SAFE_HTML            | goog.html.SafeHtml           | goog.string.htmlEscape
 SAFE_URL             | goog.html.SafeUrl            | goog.html.SafeUrl.sanitize
 TRUSTED_RESOURCE_URL | goog.html.TrustedResourceUrl | none
 SAFE_STYLE           | goog.html.SafeStyle          | reject
 SAFE_SCRIPT          | goog.html.SafeScript         | reject
-ENUM                 | none                         | TODO
+ENUM                 | none                         | whitelist per element/attribute
 CONSTANT             | goog.string.Const            | reject
 IDENTIFIER           | none                         | reject
 
 No processing is applied to custom properties.
 
 Values that are of the privileged type string type are unwrapped and allowed to
-reach a built-in attribute alias.
+reach a builtin attribute alias.
 
 Values that are of other type string types are unwrapped before being filtered.
 
@@ -315,17 +349,17 @@ component](http://bower.herokuapp.com/packages/polymer-resin).
 
 There are three deployment options.
 
-1. `polymer-resin.html` which is best for closure-friendly polymer apps.
-2. `standalone/polymer-resin.html` which includes a single JS bundle that
-   includes pre-compiled JS.
-3. `standalone/polymer-resin-debug.html` which is like the previous file
-   but the JS is not obfuscated and it logs to the console whenever a
-   property value is rejected.
+1.  `polymer-resin.html` which is best for closure-friendly polymer apps.
+2.  `standalone/polymer-resin.html` which includes a single JS bundle that
+    includes pre-compiled JS.
+3.  `standalone/polymer-resin-debug.html` which is like the previous file but
+    the JS is not obfuscated and it logs to the console whenever a property
+    value is rejected.
 
-----
+--------------------------------------------------------------------------------
 
-To deploy in the [custom element example](#custom-element-example)
-the head changes from
+To deploy in the [custom element example](#custom-element-example) the head
+changes from
 
 ```html
 <script src="webcomponents-lite.js"></script>
@@ -341,11 +375,9 @@ to
 <link rel="import" href="custom-element.html">
 ```
 
-or with one of the standalone variants above.
-The `<script>` is required because it forces the imports above it to be
-handled before that of *custom-element.html*.
-The exact text is unimportant but it must be non-empty.
-
+or with one of the standalone variants above. The `<script>` is required because
+it forces the imports above it to be handled before that of
+*custom-element.html*. The exact text is unimportant but it must be non-empty.
 
 ## Running tests from the command line
 
@@ -383,3 +415,7 @@ See the log output for the localhost URL to browse to.
 [soy-sec]: https://developers.google.com/closure/templates/docs/security
 [build-status]: https://travis-ci.org/Polymer/polymer-resin.svg?branch=master
 [build-dashboard]: https://travis-ci.org/Polymer/polymer-resin
+[idl-reflect]: https://html.spec.whatwg.org/#cereactions
+[idl-custom-element-callbacks]: https://chromium.googlesource.com/chromium/src/+/master/third_party/WebKit/Source/bindings/IDLExtendedAttributes.md
+[idl-cereactions]: https://html.spec.whatwg.org/#cereactions
+[same-origin]: https://developer.mozilla.org/en-US/docs/Web/Security/Same-origin_policy
