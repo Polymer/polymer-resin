@@ -2877,23 +2877,35 @@ security.html.contracts.ENUM_VALUE_SETS_ = [{auto:!0, ltr:!0, rtl:!0}, {_self:!0
 security.html.contracts.ENUM_VALUE_SET_BY_ATTR_ = {"*":{dir:0, target:1}};
 security.html.namealiases = {};
 security.html.namealiases.propertyToAttr = function(propName) {
-  var mixed_to_lcase = security.html.namealiases.mixed_to_lcase_;
-  mixed_to_lcase || (mixed_to_lcase = security.html.namealiases.mixed_to_lcase_ = goog.object.transpose(security.html.namealiases.LCASE_TO_MIXED_));
-  var attr = mixed_to_lcase[propName];
+  var propToAttr = security.html.namealiases.propToAttr_;
+  if (!propToAttr) {
+    var attrToProp = security.html.namealiases.getAttrToProp_(), propToAttr = security.html.namealiases.propToAttr_ = goog.object.transpose(attrToProp);
+  }
+  var attr = propToAttr[propName];
   return goog.isString(attr) ? attr : goog.string.toSelectorCase(propName);
 };
 security.html.namealiases.attrToProperty = function(attrName) {
-  var canonAttrName = String(attrName).toLowerCase(), prop = security.html.namealiases.LCASE_TO_MIXED_[canonAttrName];
+  var canonAttrName = String(attrName).toLowerCase(), prop = security.html.namealiases.getAttrToProp_()[canonAttrName];
   return goog.isString(prop) ? prop : goog.string.toCamelCase(canonAttrName);
 };
 security.html.namealiases.specialPropertyNameWorstCase = function(name) {
-  var prop = security.html.namealiases.LCASE_TO_MIXED_[name.toLowerCase()];
+  var lcname = name.toLowerCase(), prop = security.html.namealiases.getAttrToProp_()[lcname];
   return goog.isString(prop) ? prop : null;
 };
-security.html.namealiases.LCASE_TO_MIXED_ = {accept_charset:"acceptCharset", accesskey:"accessKey", alink:"aLink", allowfullscreen:"allowFullscreen", bgcolor:"bgColor", cellpadding:"cellPadding", cellspacing:"cellSpacing", "char":"ch", charoff:"chOff", checked:"defaultChecked", "class":"className", codebase:"codeBase", codetype:"codeType", contenteditable:"contentEditable", crossorigin:"crossOrigin", datetime:"dateTime", dirname:"dirName", "for":"htmlFor", formaction:"formAction", formenctype:"formEnctype", 
-formmethod:"formMethod", formnovalidate:"formNoValidate", formtarget:"formTarget", frameborder:"frameBorder", http_equiv:"httpEquiv", innerhtml:"innerHTML", innertext:"innerText", inputmode:"inputMode", ismap:"isMap", longdesc:"longDesc", marginheight:"marginHeight", marginwidth:"marginWidth", maxlength:"maxLength", mediagroup:"mediaGroup", minlength:"minLength", muted:"defaultMuted", nodevalue:"nodeValue", nohref:"noHref", noresize:"noResize", noshade:"noShade", novalidate:"noValidate", nowrap:"noWrap", 
-outerhtml:"outerHTML", outertext:"outerText", readonly:"readOnly", selected:"defaultSelected", tabindex:"tabIndex", textcontent:"textContent", truespeed:"trueSpeed", usemap:"useMap", valign:"vAlign", value:"defaultValue", valueasdate:"valueAsDate", valueasnumber:"valueAsNumber", valuetype:"valueType", vlink:"vLink"};
-security.html.namealiases.mixed_to_lcase_ = null;
+security.html.namealiases.getAttrToProp_ = function() {
+  if (!security.html.namealiases.attrToProp_) {
+    security.html.namealiases.attrToProp_ = goog.object.clone(security.html.namealiases.ODD_ATTR_TO_PROP_);
+    for (var noncanon = security.html.namealiases.NONCANON_PROPS_, i = 0, n = noncanon.length; i < n; ++i) {
+      var name = noncanon[i];
+      security.html.namealiases.attrToProp_[name.toLowerCase()] = name;
+    }
+  }
+  return security.html.namealiases.attrToProp_;
+};
+security.html.namealiases.NONCANON_PROPS_ = "aLink accessKey allowFullscreen bgColor cellPadding cellSpacing codeBase codeType contentEditable crossOrigin dateTime dirName formAction formEnctype formMethod formNoValidate formTarget frameBorder innerHTML innerText inputMode isMap longDesc marginHeight marginWidth maxLength mediaGroup minLength noHref noResize noShade noValidate noWrap nodeValue outerHTML outerText readOnly tabIndex textContent trueSpeed useMap vAlign vLink valueAsDate valueAsNumber valueType".split(" ");
+security.html.namealiases.ODD_ATTR_TO_PROP_ = {accept_charset:"acceptCharset", "char":"ch", charoff:"chOff", checked:"defaultChecked", "class":"className", "for":"htmlFor", http_equiv:"httpEquiv", muted:"defaultMuted", selected:"defaultSelected", value:"defaultValue"};
+security.html.namealiases.attrToProp_ = null;
+security.html.namealiases.propToAttr_ = null;
 security.polymer_resin = {};
 security.polymer_resin.CustomElementClassification = {BUILTIN:0, LEGACY:1, CUSTOM:2, CUSTOMIZABLE:3};
 security.polymer_resin.docRegisteredElements_ = {};
