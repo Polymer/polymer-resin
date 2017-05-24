@@ -29,8 +29,10 @@
     "**/.*",
     "**/*~",
     "**/*.md",
-    "*-test.js",
     "*-test.html",
+    "*-test.js",
+    "run_tests.sh",
+    "images/**",
     "node_modules",
     "bower_components"
   ],
