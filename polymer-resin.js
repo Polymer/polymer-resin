@@ -17,7 +17,9 @@
 // Will that cause problems if parts of the web components API are defined
 // natively instead of polyfilled?
 
+goog.provide('security.polymer_resin.UNSAFE_passThruDisallowedValues');
 goog.provide('security.polymer_resin.allowIdentifierWithPrefix');
+goog.provide('security.polymer_resin.setReportHandler');
 
 goog.require('goog.dom.NodeType');
 goog.require('goog.html.SafeHtml');
@@ -49,6 +51,32 @@ var ValueHandler;
 
 
 /**
+ * When called with (true), disallowed values will not be replaced so may reach
+ * unsafe browser sinks resulting in a security violation.
+ * <p>
+ * This mode is provided only to allow testing of an application
+ * to find and compile the kinds of false positives triggered by
+ * an application that is being migrated to use polymer resin.
+ * <p>
+ * This MUST NOT be used in production with end users and
+ * MUST NOT be set based on any attacker-controllable state like
+ * URL parameters.
+ * <p>
+ * If you never call this function, you are safer.
+ *
+ * <p>
+ * When not in goog.DEBUG mode, this is a no-op.
+ *
+ * @param {boolean} enable Pass true to enable UNSAFE mode.
+ */
+security.polymer_resin.UNSAFE_passThruDisallowedValues = function (enable) {
+  if (goog.DEBUG) {
+    security.polymer_resin.allowUnsafeValues_ = enable === true;
+  }
+};
+
+
+/**
  * Specifies that attributes with type IDENTIFIER that have the given
  * prefix should be allowed.
  *
@@ -65,9 +93,55 @@ security.polymer_resin.allowIdentifierWithPrefix = function (prefix) {
       security.polymer_resin.allowedIdentifierPattern_.source
       + '|^' + goog.string.regExpEscape(prefix));
 };
+
+/**
+ * Sets a callback to receive reports about rejected values and module status.
+ *
+ * <p>
+ * By default, if {@code goog.DEBUG} is false at init time, reportHandler is
+ * never called, and if {@code goog.DEBUG} is true at init time, reportHandler
+ * logs to the JS developer console.
+ * <p>
+ * Assuming it is enabled, either via {@code goog.DEBUG} or an explicit call to
+ * this setter, then it is called on every rejected value, and on major events
+ * like module initialization.
+ * <p>
+ * This may be used to identify false positives during debugging; to compile
+ * lists of false positives when migrating; or to gather telemetry by
+ *
+ * @param {?function (boolean, string, ...*)} reportHandler
+ *   A function that takes (isDisallowedValue, printfFormatString, printfArgs).
+ *   The arguments are ready to forward straight to the console with minimal
+ *   overhead.
+ *   <p>
+ *   If isDisallowedValue is true then the args have the printArgs have the form
+ *   [contextNodeName, nodeName, attributeOrPropertyName, disallowedValue].
+ *   <p>
+ *   The context node is the element being manipulated, or if nodeName is
+ *   {@code "#text"},
+ *   then contextNode is the parent of the text node being manipulated, so
+ *   the contextNode should always be an element or document fragment.
+ *   In that case, attributeOrPropertyName can be ignored.
+ *   <p>
+ *   If reportHandler is null then reporting is disabled.
+ */
+security.polymer_resin.setReportHandler = function (reportHandler) {
+  security.polymer_resin.reportHandler_ = reportHandler || null;
+};
+
+
+
+goog.exportSymbol(
+    'security.polymer_resin.UNSAFE_passThruDisallowedValues',
+    security.polymer_resin.UNSAFE_passThruDisallowedValues);
+
 goog.exportSymbol(
     'security.polymer_resin.allowIdentifierWithPrefix',
     security.polymer_resin.allowIdentifierWithPrefix);
+
+goog.exportSymbol(
+    'security.polymer_resin.setReportHandler',
+    security.polymer_resin.setReportHandler);
 
 
 /**
@@ -80,12 +154,50 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
 // authority.
 
 
+/**
+ * @type {boolean}
+security.polymer_resin.ViolationHandlingMode}
+ * @private
+ */
+security.polymer_resin.allowUnsafeValues_ = false;
+
+
+/**
+ * Undefined means never set (see default behavior under docs for
+ * setter above), null means disabled.
+ *
+ * @type {function (boolean, string, ...*)|null|undefined}
+ * @private
+ */
+security.polymer_resin.reportHandler_ = undefined;
+
+
 (function () {
   "use strict";
 
   function initResin() {
+    if (goog.DEBUG && security.polymer_resin.reportHandler_ === undefined
+        && typeof console !== 'undefined') {
+      security.polymer_resin.reportHandler_ =
+          function (isViolation, formatString, var_args) {
+            var consoleArgs = [formatString];
+            for (var i = 2, n = arguments.length; i < n; ++i) {
+              consoleArgs[i - 1] = arguments[i];
+            }
+            if (isViolation) {
+              console.warn.apply(console, consoleArgs);
+            } else {
+              console.log.apply(console, consoleArgs);
+            }
+          };
+    }
+
     // TODO: check not in IE quirks mode.
-    console.log('initResin');
+    if (security.polymer_resin.reportHandler_) {
+      // Emitting this allows an integrator to tell where resin is
+      // installing relative to other code that is running in the app.
+      security.polymer_resin.reportHandler_(false, 'initResin');
+    }
 
     /**
      * @param {string} name
@@ -214,10 +326,14 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
             }
           }
         }
-        if (goog.DEBUG && 'undefined' !== typeof console) {
-          console.warn('Failed to sanitize text %o in %o',
-                       value, node.parentElement);
+
+        if (security.polymer_resin.reportHandler_) {
+          security.polymer_resin.reportHandler_(
+              true, 'Failed to sanitize %s %s%s node to value %O',
+              node.parentElement && node.parentElement.nodeName,
+              '#text', '', value);
         }
+
         return INNOCUOUS_STRING;
       }
 
@@ -294,10 +410,12 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
           return safeValue;
         }
       }
-      if (goog.DEBUG && 'undefined' !== typeof console) {
-        console.warn('Failed to sanitize <%s %s="%o">',
-                     elementName, attrName, value);
+      if (security.polymer_resin.reportHandler_) {
+        security.polymer_resin.reportHandler_(
+            true, 'Failed to sanitize in %s: <%s %s="%O">',
+            elementName, elementName, attrName, value);
       }
+
       return safeValue;
     }
 
@@ -336,7 +454,11 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
               type = info && info.kind || 'property';
             }
 
-            return sanitize(node, name, type, finalValue);
+            var safeValue = sanitize(node, name, type, finalValue);
+
+            return (
+                security.polymer_resin.allowUnsafeValues_
+                ? finalValue : safeValue);
           };
       Polymer.Base._computeFinalAnnotationValue =
           computeFinalAnnotationSafeValue;
@@ -351,10 +473,14 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
       var origSanitize = Polymer.sanitizeDOMValue;
       var sanitizeDOMValue =
           function sanitizeDOMValue(value, name, type, node) {
-            var sanitizedValue = origSanitize
+            var origSanitizedValue = origSanitize
                 ? origSanitize.call(Polymer, value, name, type, node)
                 : value;
-            return sanitize(node, name, type, sanitizedValue);
+            var safeValue = sanitize(node, name, type, origSanitizedValue);
+
+            return (
+                security.polymer_resin.allowUnsafeValues_
+                ? origSanitizedValue : safeValue);
           };
       Polymer.sanitizeDOMValue = sanitizeDOMValue;
       if (Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
@@ -407,7 +533,7 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
          * @param {string} v attribute value
          * @return {string}
          */
-        function plainTextToHtml(a, e, v) {
+        function plainTextToHtml(e, a, v) {
           return goog.string.htmlEscape(v);
         }),
     safeReplacement: null,

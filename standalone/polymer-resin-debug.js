@@ -2926,10 +2926,18 @@ security.polymer_resin.classifyElement = function(name, ctor) {
   }
   return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : ctor === HTMLUnknownElement ? security.polymer_resin.CustomElementClassification.LEGACY : ctor === HTMLElement && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
 };
+security.polymer_resin.UNSAFE_passThruDisallowedValues = function(enable) {
+  goog.DEBUG && (security.polymer_resin.allowUnsafeValues_ = !0 === enable);
+};
 security.polymer_resin.allowIdentifierWithPrefix = function(prefix) {
   security.polymer_resin.allowedIdentifierPattern_ = new RegExp(security.polymer_resin.allowedIdentifierPattern_.source + "|^" + goog.string.regExpEscape(prefix));
 };
+security.polymer_resin.setReportHandler = function(reportHandler) {
+  security.polymer_resin.reportHandler_ = reportHandler || null;
+};
 security.polymer_resin.allowedIdentifierPattern_ = /^$/;
+security.polymer_resin.allowUnsafeValues_ = !1;
+security.polymer_resin.reportHandler_ = void 0;
 (function() {
   function initResin() {
     function getAttributeValue(name) {
@@ -2960,7 +2968,7 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
             }
           }
         }
-        goog.DEBUG && "undefined" !== typeof console && console.warn("Failed to sanitize text %o in %o", value, node.parentElement);
+        security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
         return "zClosurez";
       }
       var elementName = node.localName;
@@ -3001,10 +3009,16 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
           return safeValue;
         }
       }
-      goog.DEBUG && "undefined" !== typeof console && console.warn('Failed to sanitize <%s %s="%o">', elementName, attrName, value);
+      security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, 'Failed to sanitize in %s: <%s %s="%O">', elementName, elementName, attrName, value);
       return safeValue;
     }
-    console.log("initResin");
+    goog.DEBUG && void 0 === security.polymer_resin.reportHandler_ && "undefined" !== typeof console && (security.polymer_resin.reportHandler_ = function(isViolation, formatString, var_args) {
+      for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
+        consoleArgs[i - 1] = arguments[i];
+      }
+      isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
+    });
+    security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!1, "initResin");
     var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT_ = document.createElement("polyresinuncustomized");
     if (/^1\./.test(Polymer.version)) {
       security.polymer_resin.hintUsesDeprecatedRegisterElement();
@@ -3015,7 +3029,8 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
         } else {
           name = property, type = info && info.kind || "property";
         }
-        return sanitize(node, name, type, finalValue);
+        var safeValue = sanitize(node, name, type, finalValue);
+        return security.polymer_resin.allowUnsafeValues_ ? finalValue : safeValue;
       };
       Polymer.Base._computeFinalAnnotationValue = computeFinalAnnotationSafeValue;
       if (Polymer.Base._computeFinalAnnotationValue !== computeFinalAnnotationSafeValue) {
@@ -3023,8 +3038,8 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
       }
     } else {
       var origSanitize = Polymer.sanitizeDOMValue, sanitizeDOMValue = function(value, name, type, node) {
-        var sanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value;
-        return sanitize(node, name, type, sanitizedValue);
+        var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value, safeValue = sanitize(node, name, type, origSanitizedValue);
+        return security.polymer_resin.allowUnsafeValues_ ? origSanitizedValue : safeValue;
       };
       Polymer.sanitizeDOMValue = sanitizeDOMValue;
       if (Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
@@ -3034,7 +3049,7 @@ security.polymer_resin.allowedIdentifierPattern_ = /^$/;
   }
   var VALUE_HANDLERS_ = [];
   VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:null, safeReplacement:null, typeToUnwrap:null, unwrap:null};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:function(a, e, v) {
+  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:function(e, a, v) {
     return goog.string.htmlEscape(v);
   }, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
   VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(e, a, v) {
