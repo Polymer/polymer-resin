@@ -2926,154 +2926,163 @@ security.polymer_resin.classifyElement = function(name, ctor) {
   }
   return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : ctor === HTMLUnknownElement ? security.polymer_resin.CustomElementClassification.LEGACY : ctor === HTMLElement && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
 };
-security.polymer_resin.UNSAFE_passThruDisallowedValues = function(enable) {
+security.polymer_resin.UNSAFE_passThruDisallowedValues_ = function(enable) {
   goog.DEBUG && (security.polymer_resin.allowUnsafeValues_ = !0 === enable);
 };
-security.polymer_resin.allowIdentifierWithPrefix = function(prefix) {
+security.polymer_resin.allowIdentifierWithPrefix_ = function(prefix) {
   security.polymer_resin.allowedIdentifierPattern_ = new RegExp(security.polymer_resin.allowedIdentifierPattern_.source + "|^" + goog.string.regExpEscape(prefix));
 };
-security.polymer_resin.setReportHandler = function(reportHandler) {
+security.polymer_resin.setReportHandler_ = function(reportHandler) {
   security.polymer_resin.reportHandler_ = reportHandler || null;
 };
 security.polymer_resin.allowedIdentifierPattern_ = /^$/;
 security.polymer_resin.allowUnsafeValues_ = !1;
 security.polymer_resin.reportHandler_ = void 0;
-(function() {
-  function initResin() {
-    function getAttributeValue(name) {
-      var value = this.getAttribute(name);
-      return !value || /[\[\{]/.test(name) ? null : value;
+security.polymer_resin.install = function(opt_config) {
+  function getAttributeValue(name) {
+    var value = this.getAttribute(name);
+    return !value || /[\[\{]/.test(name) ? null : value;
+  }
+  function sanitize(node, name, type, value) {
+    if (!value) {
+      return value;
     }
-    function sanitize(node, name, type, value) {
-      if (!value) {
-        return value;
-      }
-      var nodeType = node.nodeType;
-      if (nodeType !== goog.dom.NodeType.ELEMENT) {
-        if (nodeType === goog.dom.NodeType.TEXT) {
-          var parentElement = node.parentElement;
-          if (parentElement && parentElement.nodeType === goog.dom.NodeType.ELEMENT) {
-            var parentElementName = parentElement.localName, allowText = !1;
-            switch(security.polymer_resin.classifyElement(parentElementName, parentElement.constructor)) {
-              case security.polymer_resin.CustomElementClassification.BUILTIN:
-              case security.polymer_resin.CustomElementClassification.LEGACY:
-                allowText = security.html.contracts.contentTypeForElement(parentElementName) === security.html.contracts.ElementContentType.SAFE_HTML;
-                break;
-              case security.polymer_resin.CustomElementClassification.CUSTOMIZABLE:
-              case security.polymer_resin.CustomElementClassification.CUSTOM:
-                allowText = !0;
-            }
-            if (allowText) {
-              return value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value);
-            }
+    var nodeType = node.nodeType;
+    if (nodeType !== goog.dom.NodeType.ELEMENT) {
+      if (nodeType === goog.dom.NodeType.TEXT) {
+        var parentElement = node.parentElement;
+        if (parentElement && parentElement.nodeType === goog.dom.NodeType.ELEMENT) {
+          var parentElementName = parentElement.localName, allowText = !1;
+          switch(security.polymer_resin.classifyElement(parentElementName, parentElement.constructor)) {
+            case security.polymer_resin.CustomElementClassification.BUILTIN:
+            case security.polymer_resin.CustomElementClassification.LEGACY:
+              allowText = security.html.contracts.contentTypeForElement(parentElementName) === security.html.contracts.ElementContentType.SAFE_HTML;
+              break;
+            case security.polymer_resin.CustomElementClassification.CUSTOMIZABLE:
+            case security.polymer_resin.CustomElementClassification.CUSTOM:
+              allowText = !0;
+          }
+          if (allowText) {
+            return value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value);
           }
         }
-        security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
-        return "zClosurez";
       }
-      var elementName = node.localName;
-      var elementName$jscomp$0 = node.localName;
-      if (node.getAttribute("is") || security.polymer_resin.classifyElement(elementName$jscomp$0, node.constructor) !== security.polymer_resin.CustomElementClassification.CUSTOM) {
-        var uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0];
-        uncustomizedProxy || (uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0] = document.createElement(elementName$jscomp$0));
-        var elementProxy = uncustomizedProxy;
-      } else {
-        elementProxy = VANILLA_HTML_ELEMENT_;
-      }
-      switch(type) {
-        case "attribute":
-          if (security.html.namealiases.attrToProperty(name) in elementProxy) {
-            break;
-          }
-          return value;
-        case "property":
-          if (name in elementProxy) {
-            break;
-          }
-          var worstCase = security.html.namealiases.specialPropertyNameWorstCase(name);
-          if (worstCase && worstCase in elementProxy) {
-            break;
-          }
-          return value;
-        default:
-          throw Error(type + ": " + typeof type);
-      }
-      var attrName = "attribute" == type ? name.toLowerCase() : security.html.namealiases.propertyToAttr(name), attrType = security.html.contracts.typeOfAttribute(elementName, attrName, goog.bind(getAttributeValue, node)), safeValue = "zClosurez";
-      if (null != attrType) {
-        var valueHandler = VALUE_HANDLERS_[attrType];
-        if (valueHandler.typeToUnwrap && value instanceof valueHandler.typeToUnwrap) {
-          return valueHandler.unwrap(value);
-        }
-        var stringValue = value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value), safeValue = valueHandler.filter ? valueHandler.filter(elementName, attrName, stringValue) : stringValue;
-        if (safeValue !== valueHandler.safeReplacement) {
-          return safeValue;
-        }
-      }
-      security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, 'Failed to sanitize in %s: <%s %s="%O">', elementName, elementName, attrName, value);
-      return safeValue;
+      security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
+      return security.polymer_resin.INNOCUOUS_STRING_;
     }
-    goog.DEBUG && void 0 === security.polymer_resin.reportHandler_ && "undefined" !== typeof console && (security.polymer_resin.reportHandler_ = function(isViolation, formatString, var_args) {
-      for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
-        consoleArgs[i - 1] = arguments[i];
-      }
-      isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
-    });
-    security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!1, "initResin");
-    var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT_ = document.createElement("polyresinuncustomized");
-    if (/^1\./.test(Polymer.version)) {
-      security.polymer_resin.hintUsesDeprecatedRegisterElement();
-      var origCompute = Polymer.Base._computeFinalAnnotationValue, computeFinalAnnotationSafeValue = function(node, property, value, info) {
-        var finalValue = origCompute.call(Polymer.Base, node, property, value, info), type = "property";
-        if (info && info.propertyName) {
-          var name = info.propertyName;
-        } else {
-          name = property, type = info && info.kind || "property";
-        }
-        var safeValue = sanitize(node, name, type, finalValue);
-        return security.polymer_resin.allowUnsafeValues_ ? finalValue : safeValue;
-      };
-      Polymer.Base._computeFinalAnnotationValue = computeFinalAnnotationSafeValue;
-      if (Polymer.Base._computeFinalAnnotationValue !== computeFinalAnnotationSafeValue) {
-        throw Error("Cannot replace _computeFinalAnnotationValue.  Is Polymer frozen?");
-      }
+    var elementName = node.localName;
+    var elementName$jscomp$0 = node.localName;
+    if (node.getAttribute("is") || security.polymer_resin.classifyElement(elementName$jscomp$0, node.constructor) !== security.polymer_resin.CustomElementClassification.CUSTOM) {
+      var uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0];
+      uncustomizedProxy || (uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0] = document.createElement(elementName$jscomp$0));
+      var elementProxy = uncustomizedProxy;
     } else {
-      var origSanitize = Polymer.sanitizeDOMValue, sanitizeDOMValue = function(value, name, type, node) {
-        var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value, safeValue = sanitize(node, name, type, origSanitizedValue);
-        return security.polymer_resin.allowUnsafeValues_ ? origSanitizedValue : safeValue;
-      };
-      Polymer.sanitizeDOMValue = sanitizeDOMValue;
-      if (Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
-        throw Error("Cannot install sanitizeDOMValue.  Is Polymer frozen?");
+      elementProxy = VANILLA_HTML_ELEMENT_;
+    }
+    switch(type) {
+      case "attribute":
+        if (security.html.namealiases.attrToProperty(name) in elementProxy) {
+          break;
+        }
+        return value;
+      case "property":
+        if (name in elementProxy) {
+          break;
+        }
+        var worstCase = security.html.namealiases.specialPropertyNameWorstCase(name);
+        if (worstCase && worstCase in elementProxy) {
+          break;
+        }
+        return value;
+      default:
+        throw Error(type + ": " + typeof type);
+    }
+    var attrName = "attribute" == type ? name.toLowerCase() : security.html.namealiases.propertyToAttr(name), attrType = security.html.contracts.typeOfAttribute(elementName, attrName, goog.bind(getAttributeValue, node)), safeValue = security.polymer_resin.INNOCUOUS_STRING_;
+    if (null != attrType) {
+      var valueHandler = security.polymer_resin.VALUE_HANDLERS_[attrType];
+      if (valueHandler.typeToUnwrap && value instanceof valueHandler.typeToUnwrap) {
+        return valueHandler.unwrap(value);
       }
+      var stringValue = value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value), safeValue = valueHandler.filter ? valueHandler.filter(elementName, attrName, stringValue) : stringValue;
+      if (safeValue !== valueHandler.safeReplacement) {
+        return safeValue;
+      }
+    }
+    security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, 'Failed to sanitize in %s: <%s %s="%O">', elementName, elementName, attrName, value);
+    return safeValue;
+  }
+  if (opt_config) {
+    var configUnsafePassThruDisallowedValues = opt_config.UNSAFE_passThruDisallowedValues, configAllowedIdentifierPrefixes = opt_config.allowedIdentifierPrefixes, configReportHandler = opt_config.reportHandler;
+    null != configUnsafePassThruDisallowedValues && security.polymer_resin.UNSAFE_passThruDisallowedValues_(configUnsafePassThruDisallowedValues);
+    if (configAllowedIdentifierPrefixes) {
+      for (var i$jscomp$0 = 0, n$jscomp$0 = configAllowedIdentifierPrefixes.length; i$jscomp$0 < n$jscomp$0; ++i$jscomp$0) {
+        security.polymer_resin.allowIdentifierWithPrefix_(configAllowedIdentifierPrefixes[i$jscomp$0]);
+      }
+    }
+    void 0 !== configReportHandler && security.polymer_resin.setReportHandler_(configReportHandler);
+  }
+  goog.DEBUG && void 0 === security.polymer_resin.reportHandler_ && "undefined" !== typeof console && (security.polymer_resin.reportHandler_ = function(isViolation, formatString, var_args) {
+    for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
+      consoleArgs[i - 1] = arguments[i];
+    }
+    isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
+  });
+  security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!1, "initResin");
+  var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT_ = document.createElement("polyresinuncustomized");
+  if (/^1\./.test(Polymer.version)) {
+    security.polymer_resin.hintUsesDeprecatedRegisterElement();
+    var origCompute = Polymer.Base._computeFinalAnnotationValue, computeFinalAnnotationSafeValue = function(node, property, value, info) {
+      var finalValue = origCompute.call(Polymer.Base, node, property, value, info), type = "property";
+      if (info && info.propertyName) {
+        var name = info.propertyName;
+      } else {
+        name = property, type = info && info.kind || "property";
+      }
+      var safeValue = sanitize(node, name, type, finalValue);
+      return security.polymer_resin.allowUnsafeValues_ ? finalValue : safeValue;
+    };
+    Polymer.Base._computeFinalAnnotationValue = computeFinalAnnotationSafeValue;
+    if (Polymer.Base._computeFinalAnnotationValue !== computeFinalAnnotationSafeValue) {
+      throw Error("Cannot replace _computeFinalAnnotationValue.  Is Polymer frozen?");
+    }
+  } else {
+    var origSanitize = Polymer.sanitizeDOMValue, sanitizeDOMValue = function(value, name, type, node) {
+      var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value, safeValue = sanitize(node, name, type, origSanitizedValue);
+      return security.polymer_resin.allowUnsafeValues_ ? origSanitizedValue : safeValue;
+    };
+    Polymer.sanitizeDOMValue = sanitizeDOMValue;
+    if (Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
+      throw Error("Cannot install sanitizeDOMValue.  Is Polymer frozen?");
     }
   }
-  var VALUE_HANDLERS_ = [];
-  VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:null, safeReplacement:null, typeToUnwrap:null, unwrap:null};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:function(e, a, v) {
-    return goog.string.htmlEscape(v);
-  }, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(e, a, v) {
-    return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
-  }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeUrl, unwrap:goog.html.SafeUrl.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:function() {
-    return goog.html.SafeUrl.INNOCUOUS_STRING;
-  }, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.TrustedResourceUrl, unwrap:goog.html.TrustedResourceUrl.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_STYLE] = {filter:function() {
-    return goog.html.SafeStyle.INNOCUOUS_STRING;
-  }, safeReplacement:goog.html.SafeStyle.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeStyle, unwrap:goog.html.SafeStyle.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:function() {
-    return "/*zClosurez*/";
-  }, safeReplacement:"/*zClosurez*/", typeToUnwrap:goog.html.SafeScript, unwrap:goog.html.SafeScript.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function(e, a, v) {
-    var lv = String(v).toLowerCase();
-    return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : "zClosurez";
-  }, safeReplacement:"zClosurez", typeToUnwrap:null, unwrap:null};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:function() {
-    return "/*zClosurez*/";
-  }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
-  VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
-    return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : "zClosurez";
-  }, safeReplacement:"zClosurez", typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
-  "undefined" !== typeof Polymer && Polymer.version ? initResin() : window.addEventListener("HTMLImportsLoaded", initResin);
-})();
+};
+security.polymer_resin.INNOCUOUS_STRING_ = "zClosurez";
+security.polymer_resin.INNOCUOUS_SCRIPT_ = " /*zClosurez*/ ";
+security.polymer_resin.VALUE_HANDLERS_ = [];
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:null, safeReplacement:null, typeToUnwrap:null, unwrap:null};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:function(e, a, v) {
+  return goog.string.htmlEscape(v);
+}, safeReplacement:null, typeToUnwrap:goog.html.SafeHtml, unwrap:goog.html.SafeHtml.unwrap};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:function(e, a, v) {
+  return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
+}, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeUrl, unwrap:goog.html.SafeUrl.unwrap};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:function() {
+  return goog.html.SafeUrl.INNOCUOUS_STRING;
+}, safeReplacement:goog.html.SafeUrl.INNOCUOUS_STRING, typeToUnwrap:goog.html.TrustedResourceUrl, unwrap:goog.html.TrustedResourceUrl.unwrap};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_STYLE] = {filter:function() {
+  return goog.html.SafeStyle.INNOCUOUS_STRING;
+}, safeReplacement:goog.html.SafeStyle.INNOCUOUS_STRING, typeToUnwrap:goog.html.SafeStyle, unwrap:goog.html.SafeStyle.unwrap};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:function() {
+  return security.polymer_resin.INNOCUOUS_SCRIPT_;
+}, safeReplacement:security.polymer_resin.INNOCUOUS_SCRIPT_, typeToUnwrap:goog.html.SafeScript, unwrap:goog.html.SafeScript.unwrap};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function(e, a, v) {
+  var lv = String(v).toLowerCase();
+  return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : security.polymer_resin.INNOCUOUS_STRING_;
+}, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, typeToUnwrap:null, unwrap:null};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:function() {
+  return security.polymer_resin.INNOCUOUS_SCRIPT_;
+}, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
+security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
+  return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : security.polymer_resin.INNOCUOUS_STRING_;
+}, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
 

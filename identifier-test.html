@@ -22,7 +22,9 @@ http://polymer.github.io/PATENTS.txt
   <script src="polymer-resin.js"></script>
   <script src="identifier-test.js"></script>
   <script>
-    security.polymer_resin.allowIdentifierWithPrefix('safe-');
+    security.polymer_resin.install({
+      'allowedIdentifierPrefixes': ['safe-']
+    });
   </script>
   <title>Identifier Test</title>
 </head>

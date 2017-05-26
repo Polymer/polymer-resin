@@ -371,7 +371,10 @@ to
 ```html
 <script src="webcomponents-lite.js"></script>
 <link rel="import" href="polymer-resin/polymer-resin.html">
-<script>// This comment is essential to the security of this project.</script>
+<script>
+// This step is essential to the security of this project.
+security.polymer_resin.install();
+</script>
 <link rel="import" href="custom-element.html">
 ```
 

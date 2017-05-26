@@ -41,9 +41,7 @@ bower install --save polymer-resin#1.2.3
 ### Downloading a release
 
 If you don't want to use bower, you can browse releases of polymer-resin via the
-project's [Github release
-page](https://github.com/Polymer/polymer-resin/releases) and tarballs are
-available there.
+project's [Github release page][releases] and tarballs are available there.
 
 ### Integrating
 
@@ -84,8 +82,7 @@ Before                                               | After
 ` `                                                  | `. . <link rel="import"`
 ` `                                                  | `. . . href="polymer-resin/polymer-resin.html" />`
 ` `                                                  | `. . <script>`
-` `                                                  | `. . // Configure polymer-resin. See below.`
-` `                                                  | `. . // Must not be empty.`
+` `                                                  | `. . security.polymer_resin.install({ /*config*/ })`
 ` `                                                  | `. . </script>`
 `. . <link rel="import" href="my-app.html" />`       | `. . <link rel="import" href="my-app.html" />`
 `. <body>`                                           | `. <body>`
@@ -99,41 +96,104 @@ importing, and must appear before polymer-resin is loaded.
 The above Polymer document shows a synchronous script tag.
 
 ```html
-<script>// Configure polymer-resin.  Must not be empty.</script>
-```
-
-Due to a quirk of how HTML imports work, this must be present even if you don't
-need to do any configuration. This makes sure that the polymer-resin JS will
-load before `<script src=...>`s loaded by subsequently imported modules.
-
-Polymer-resin has a small API that allows granting privileges to application
-code.
-
-[`security.polymer_resin.allowIdentifierWithPrefix('prefix-')`][allow-ident-prefix]
-allows data bindings to specify `id="prefix-..."` attribute values. Attacker
-controlled IDs are not an [arbitrary-code execution vulnerability][a.c.e.] but
-skilled attackers have exploited the fact that `document.getElementById(x)`
-returns one of potentially many elements with the same ID. Ideally, an
-application would make sure that important form input names and IDs controllable
-by attackers are disjoint so that the content of inputs sent to the server
-reflects user intent. If your application is not careful about IDs, and you want
-to use polymer-resin to prevent arbitrary-code execution while you work on
-separating ID namespaces, you can use the following:
-
-```html
 <script>
-security.polymer_resin.allowIdentifierWithPrefix('');
+security.polymer_resin.install({ /* config */ })
 </script>
 ```
 
+Polymer resin will provide no protection until explicitly installed. This allows
+it to be installed on an experimental basis for some subset of users during
+migration.
+
+The `{ /* config */ }` object can have a variety of properties..
+
+#### `{ 'allowedIdentifierPrefixes: ['prefix-'] }`
+
+`allowedIdentifierPrefixes` specifies an array of ID prefixes. This allows data
+bindings to specify `id="prefix-..."` attribute values. If there are multiple
+values, then an ID is allowed if it starts with any of the prefixes.
+
+Attacker controlled IDs are not an [arbitrary-code execution
+vulnerability][a.c.e.] but skilled attackers have exploited the fact that
+`document.getElementById(x)` returns one of potentially many elements with the
+same ID. Ideally, an application would make sure that important form input names
+and IDs controllable by attackers are disjoint so that the content of inputs
+sent to the server reflects user intent. If your application is not careful
+about IDs, and you want to use polymer-resin to prevent arbitrary-code execution
+while you work on separating ID namespaces, you can use the following:
+
+```html
+<script>
+security.polymer_resin.install({ allowedIdentifierPrefixes: [''] });
+</script>
+```
+
+#### `{ 'reportHandler': myReportHandlerFn }`
+
+`reportHandler` is a callback that receives reports about rejected values and
+module status.
+
+By default, if `goog.DEBUG` is false at init time, reportHandler is never
+called, and if `goog.DEBUG` is true at init time, reportHandler logs to the JS
+developer console.
+
+Assuming it is enabled, either via `goog.DEBUG` or an explicit call to this
+setter, then it is called on every rejected value, and on major events like
+module initialization.
+
+This may be used to identify false positives during debugging; to compile lists
+of false positives when migrating; or to gather telemetry by compiling a table
+summarizing disallowed value reports.
+
 ## <a name="migrating">Migrating an app or element to work with polymer-resin</a>
 
-TODO: explain how one can load a variant of polymer-resin compiled in
-`UNSAFE_ADVISORY_ONLY` mode. Polymer-resin doesn't actually substitute innocuous
-values for unsafe inputs but logs and one can get a digest from the console of
-rejected (element, attribute/property, value) triples which allows running tests
-that don't include attempted attacks and seeing the kinds of false positives
-that tend to show up.
+When migrating an app to use polymer-resin, it can be helpful to get a list of
+false positives. One false negative can cause a cascading security failure that
+compromises your app, but false positives can also cause a cascading failure
+that makes it hard to get coverage when manually testing an application.
+
+```html
+<script>
+var polymerResinDebugTelemetry = {};
+
+// Collect violation counts in a table instead of logging.
+function telemetryGatheringReportHandler(
+    isDisallowedValue, fmtString,
+    optContextNodeName, optNodeName, optAttrName, optValue,
+    var_args) {
+  if (isDisallowedValue) {
+    var key = optContextNodeName + ' : ' + optNodeName + ' : '
+            + optAttrName;
+    polymerResingDebugTelemetry[key] =
+        (polymerResingDebugTelemetry[key] || 0) + 1;
+  }
+}
+
+// Can be called from console.
+function dumpPolymerResinDebugTelemetry() {
+  console.log(JSON.stringify(polymerResinDebugTelemetry, null, 2));
+}
+
+security.polymer_resin.install(
+    {
+      'reportHandler`: telemetryGatheringReportHandler
+
+      // Allow application to progress as normal so we can
+      // exercise as much of the app as possible without working
+      // around problems caused by false positives.
+      // HACK: DO NOT RUN IN PROD.
+      'UNSAFE_passThruDisallowedValues': true,
+    })
+</script>
+```
+
+This configuration MUST NOT be used in production systems since
+**UNSAFE_passThruDisallowedValues** disables the security protections similar to
+[CSP Report-Only][csp-report-only] mode.
+
+With this configuration, Polymer-resin doesn't actually substitute innocuous
+values for unsafe inputs but collects them so that you can dump a digest to the
+console.
 
 ## <a name="debugging">Debugging an app or element that uses polymer-resin</a>
 
@@ -223,6 +283,10 @@ Instead of using a contract type, code can often be refactored to do without.
 This sample code could be refactored to use a `<button>` without any data
 binding.
 
+If you find that something is rejected that is innocuous, file a [bug][issues].
+Polymer-resin whitelists elements and attributes, and our whitelist is probably
+incomplete.
+
 ## End-to-end safety
 
 TODO: talk about using in conjunction with JSConformance and `--polymer_pass` to
@@ -234,8 +298,10 @@ check sanitariness of JS and sources of safe html types.
 [safe-url]: https://google.github.io/closure-library/api/goog.html.SafeUrl.html
 [safe-html-types]: https://github.com/google/safe-html-types/blob/master/doc/safehtml-types.md
 [html-import]: https://www.webcomponents.org/community/articles/introduction-to-html-imports
-[allow-ident-prefix]: https://github.com/Polymer/polymer-resin/blob/6dbc44f9e5484771e483fdc0a3909f21eb1d99f9/polymer-resin.js#L51-L63
 [a.c.e.]: https://en.wikipedia.org/wiki/Arbitrary_code_execution
 [contracts-a-href]: https://github.com/Polymer/polymer-resin/blob/ff7f58f00ec0794517ecca11a801a2a7e6c04e84/lib/contracts/contracts.js#L296-L302
 [closure-library]: https://github.com/google/closure-library
 [contract-types]: https://github.com/google/safe-html-types/blob/master/doc/safehtml-types.md#types
+[csp-report-only]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
+[releases]: https://github.com/Polymer/polymer-resin/releases
+[issues]: https://github.com/Polymer/polymer-resin/issues
