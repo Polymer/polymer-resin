@@ -374,13 +374,13 @@ security.polymer_resin.install = function (opt_config) {
         // Whitelist and handle text node interpolation by checking
         // the content type of the parent node.
         var parentElement = node.parentElement;
+        var allowText = !parentElement;
         if (parentElement
             && parentElement.nodeType === goog.dom.NodeType.ELEMENT) {
           var parentElementName = parentElement.localName;
           var parentClassification = security.polymer_resin.classifyElement(
               parentElementName,
               /** @type{!Function} */(parentElement.constructor));
-          var allowText = false;
           switch (parentClassification) {
             case security.polymer_resin.CustomElementClassification.BUILTIN:
             case security.polymer_resin.CustomElementClassification.LEGACY:
@@ -395,13 +395,13 @@ security.polymer_resin.install = function (opt_config) {
               allowText = true;
               break;
           }
-          if (allowText) {
-            return (
-                !!(value && value.implementsGoogStringTypedString)
-                ? (/** @type {!goog.string.TypedString} */(value))
-                  .getTypedStringValue()
-                : String(value));
-          }
+        }
+        if (allowText) {
+          return (
+              !!(value && value.implementsGoogStringTypedString)
+              ? (/** @type {!goog.string.TypedString} */(value))
+                .getTypedStringValue()
+              : String(value));
         }
       }
 

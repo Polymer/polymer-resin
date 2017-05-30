@@ -45,11 +45,11 @@ suite(
         // Grab elements from under the given <custom-tag>'s shadow root
         // so that the tests below can easily inspect their attributes
         // and properties.
-        var links = customTag.querySelectorAll('a');
+        var links = Polymer.dom(customTag.root).querySelectorAll('a');
         decomposed = {
-          outerDiv: customTag.querySelector('div'),
+          outerDiv: customTag.$$('div'),
           dynLink: links[0],  // The <a href="[[...]]"><img ...> ([[...]])</a>
-          img: customTag.querySelector('img'),
+          img: customTag.$$('img'),
           staticLink: links[1]  // The <a href="javascript:...">fixed text</a>
         };
       });

@@ -2950,9 +2950,9 @@ security.polymer_resin.install = function(opt_config) {
     var nodeType = node.nodeType;
     if (nodeType !== goog.dom.NodeType.ELEMENT) {
       if (nodeType === goog.dom.NodeType.TEXT) {
-        var parentElement = node.parentElement;
+        var parentElement = node.parentElement, allowText = !parentElement;
         if (parentElement && parentElement.nodeType === goog.dom.NodeType.ELEMENT) {
-          var parentElementName = parentElement.localName, allowText = !1;
+          var parentElementName = parentElement.localName;
           switch(security.polymer_resin.classifyElement(parentElementName, parentElement.constructor)) {
             case security.polymer_resin.CustomElementClassification.BUILTIN:
             case security.polymer_resin.CustomElementClassification.LEGACY:
@@ -2962,9 +2962,9 @@ security.polymer_resin.install = function(opt_config) {
             case security.polymer_resin.CustomElementClassification.CUSTOM:
               allowText = !0;
           }
-          if (allowText) {
-            return value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value);
-          }
+        }
+        if (allowText) {
+          return value && value.implementsGoogStringTypedString ? value.getTypedStringValue() : String(value);
         }
       }
       security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);

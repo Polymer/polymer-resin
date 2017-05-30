@@ -25,14 +25,14 @@ suite(
       });
 
       test('blank', function() {
-        var link = enumAttrFixture.querySelector('a');
+        var link = enumAttrFixture.$$('a');
         enumAttrFixture.x = '_blank';
 
         assert.equal('_blank', link.target);
       });
 
       test('evil_payload', function() {
-        var link = enumAttrFixture.querySelector('a');
+        var link = enumAttrFixture.$$('a');
         enumAttrFixture.x = 'login-form';
 
         assert.equal('zClosurez', link.target);

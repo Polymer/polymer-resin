@@ -28,14 +28,14 @@ suite(
       });
 
       test('innocuous_string', function() {
-        var link = oneAttrFixture.querySelector('a');
+        var link = oneAttrFixture.$$('a');
         oneAttrFixture.x = 'http://example.com/foo';
 
         assert.equal('http://example.com/foo', link.href);
       });
 
       test('safe_url', function() {
-        var link = oneAttrFixture.querySelector('a');
+        var link = oneAttrFixture.$$('a');
         oneAttrFixture.x = goog.html.SafeUrl.fromConstant(
             goog.string.Const.from('javascript:safe()'));
 
@@ -43,7 +43,7 @@ suite(
       });
 
       test('evil_payload', function() {
-        var link = oneAttrFixture.querySelector('a');
+        var link = oneAttrFixture.$$('a');
         oneAttrFixture.x = 'javascript:evil()';
 
         assert.equal(

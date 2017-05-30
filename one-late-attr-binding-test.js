@@ -31,7 +31,7 @@ suite(
         oneLateAttrFixture.items = ['http://example.com/foo'];
         flush(
             function () {
-              var link = oneLateAttrFixture.querySelector('a');
+              var link = oneLateAttrFixture.$$('a');
               assert.equal('http://example.com/foo', link.href);
               done();
             });
@@ -44,7 +44,7 @@ suite(
         ];
         flush(
             function () {
-              var link = oneLateAttrFixture.querySelector('a');
+              var link = oneLateAttrFixture.$$('a');
               assert.equal('javascript:safe()', link.href);
               done();
             });
@@ -53,7 +53,7 @@ suite(
       test('evil_payload', function(done) {
         oneLateAttrFixture.items = ['javascript:evil()'];
         flush(function () {
-          var link = oneLateAttrFixture.querySelector('a');
+          var link = oneLateAttrFixture.$$('a');
           assert.equal(
               goog.html.SafeUrl.INNOCUOUS_STRING,
               link.href);

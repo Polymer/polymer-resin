@@ -28,16 +28,21 @@ suite(
 
     function () {
       var computedValueFixture;
+      var links;
 
       setup(function (done) {
         computedValueFixture = fixture('computed-value-fixture');
-        computedValueFixture.links = links;
-        flush(done);  // Don't run tests until dom-repeat terminates
+        computedValueFixture.links = linkContent;
+        flush(function () {
+          // Don't run tests until dom-repeat terminates
+          links = Polymer.dom(computedValueFixture.root).querySelectorAll('a');
+          done();
+        });
       });
 
-      var links = [
-        { "url": "http://example.com/#frag", text: "example" },
-        { "url": "javascript:alert(1)", text: "XSS" }
+      var linkContent = [
+        { url: "http://example.com/#frag", text: "example" },
+        { url: "javascript:alert(1)", text: "XSS" }
       ];
 
       function trim(s) {
@@ -45,14 +50,12 @@ suite(
       }
 
       test('urls', function() {
-        var links = computedValueFixture.querySelectorAll('a');
         assert.equal(2, links.length);
         assert.equal('http://example.com/', links[0].href);
         assert.equal(goog.html.SafeUrl.INNOCUOUS_STRING, links[1].href);
       });
 
       test('text', function() {
-        var links = computedValueFixture.querySelectorAll('a');
         assert.equal(2, links.length);
         assert.equal('example (example.com)', trim(links[0].textContent));
         assert.equal('XSS ()', trim(links[1].textContent));

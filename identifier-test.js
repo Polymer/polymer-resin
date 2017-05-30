@@ -26,8 +26,8 @@ suite(
 
       setup(function () {
         identifierFixture = fixture('identifier-test-fixture');
-        input = identifierFixture.querySelector('input');
-        label = identifierFixture.querySelector('label');
+        input = identifierFixture.$$('input');
+        label = identifierFixture.$$('label');
       });
 
       function assertId(want, inputValue) {

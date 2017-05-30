@@ -29,9 +29,9 @@ suite(
 
       setup(function () {
         nodes = fixture('text-node-test');
-        divElement = nodes.querySelector('div');
-        objectElement = nodes.querySelector('object');
-        scriptElement = nodes.querySelector('script');
+        divElement = nodes.$$('div');
+        objectElement = nodes.$$('object');
+        scriptElement = nodes.$$('script');
       });
 
 

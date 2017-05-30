@@ -20,7 +20,6 @@ suite(
     function () {
       var testFixture;
       var spanElement;
-      var textNode;
 
       var evilDone = false;
       goog.exportSymbol('tooltip_tests.doEvil', function () {
@@ -29,7 +28,7 @@ suite(
 
       setup(function () {
         testFixture = fixture('tooltip-test-fixture');
-        spanElement = testFixture.querySelector('span');
+        spanElement = testFixture.$$('span');
       });
 
 
@@ -47,7 +46,8 @@ suite(
         testFixture.content = 'Hello, World!';
 
         var textNodeValue;
-        for (var child = testFixture.firstChild; child;
+        for (var child = Polymer.dom(testFixture.root).firstChild;
+             child;
              child = child.nextSibling) {
           if (child.nodeType == Node.TEXT_NODE
               && /\S/.test(child.nodeValue)) {

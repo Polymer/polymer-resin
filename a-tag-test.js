@@ -28,7 +28,7 @@ suite(
       });
 
       function getA(id) {
-        return toCheck.querySelector('#' + id);
+        return toCheck.$$('#' + id);
       }
 
       test('innocuous_string', function() {

@@ -30,14 +30,14 @@ suite(
       test('innocuous_string', function() {
         srcAttrAsTextFixture.src = 'Java joe\'s';
         assert.equal('I bought a coffee at Java joe\'s then I dropped it.',
-                     srcAttrAsTextFixture.textContent);
+                     Polymer.dom(srcAttrAsTextFixture.root).textContent);
       });
 
       test('bad_url_as_text', function() {
         srcAttrAsTextFixture.src = 'javascript:joe(\'s\')';
         assert.equal(
             'I bought a coffee at javascript:joe(\'s\') then I dropped it.',
-            srcAttrAsTextFixture.textContent);
+            Polymer.dom(srcAttrAsTextFixture.root).textContent);
       });
 
       test('typed_string_is_unwrapped', function() {
@@ -48,7 +48,7 @@ suite(
         // computeFinalAnnotationValue.  This seems different from that
         // seen by other test cases.  Why is it?
 //        assert.equal('I bought a coffee at safe/value then I dropped it.',
-//                     srcAttrAsTextFixture.textContent);
+//                     Polymer.dom(srcAttrAsTextFixture.root).textContent);
       });
 
     });

@@ -28,11 +28,11 @@ suite(
 
       setup(function () {
         buttons = fixture('attr-property-aliasing-fixture');
-        propertyButton = buttons.querySelector('.property-button');
-        attributeButton = buttons.querySelector('.attribute-button');
+        propertyButton = buttons.$$('.property-button');
+        attributeButton = buttons.$$('.attribute-button');
         customButton = buttons
-            .querySelector('.custom-button')
-            .querySelector('button');
+            .$$('.custom-button')
+            .$$('button');
       });
 
 
