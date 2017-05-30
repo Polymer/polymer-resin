@@ -73,12 +73,17 @@ cp -r "$SRC_DIR"/bower_components/webcomponentsjs \
   "$TEST_ROOT_DIR"/webcomponentsjs
 cp -r "$SRC_DIR"/bower_components/polymer \
   "$TEST_ROOT_DIR"/polymer
+# wct 6 needs to have bower available
+cp -r "$SRC_DIR"/bower_components \
+  "$TEST_ROOT_DIR"/polymer-resin/bower_components
 
 
 # TODO: allow running the tests against both debug and non-debug
 # versions.
 ln "$SRC_DIR"/standalone/polymer-resin-debug.js \
   "$TEST_ROOT_DIR"/polymer-resin/polymer-resin.js
+ln "$SRC_DIR"/polymer-resin.html \
+  "$TEST_ROOT_DIR"/polymer-resin/polymer-resin.html
 
 
 # Invoke wct

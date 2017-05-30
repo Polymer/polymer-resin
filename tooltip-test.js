@@ -14,9 +14,6 @@
 
 goog.provide('tooltip_tests');
 
-goog.require('goog.style');
-
-
 suite(
     'TooltipTests',
 
@@ -36,6 +33,15 @@ suite(
       });
 
 
+      function getSpanMargins() {
+        var computedStyle = spanElement
+            && window.getComputedStyle(spanElement);
+        var marginRight = computedStyle && computedStyle.marginRight;
+        var marginLeft = computedStyle && computedStyle.marginLeft;
+        return { left: marginLeft, right: marginRight };
+      }
+
+
       test('test_width_is_number', function() {
         testFixture.ttWidth = '10px';
         testFixture.content = 'Hello, World!';
@@ -50,10 +56,9 @@ suite(
           }
         }
 
-        var marginRight = spanElement
-            && goog.style.getComputedStyle(spanElement, 'margin-right');
-        var marginLeft = spanElement
-            && goog.style.getComputedStyle(spanElement, 'margin-left');
+        var margins = getSpanMargins();
+        var marginLeft = margins.left;
+        var marginRight = margins.right;
 
         assert.isOk(/10px/.test(marginRight), marginRight || undefined);
         assert.isOk(/calc\(-10px \+ 50%\)/.test(marginLeft),
@@ -65,10 +70,9 @@ suite(
         testFixture.ttWidth = 'expression(tooltip_tests.doEvil())';
         testFixture.content = '<script>tooltip_tests.doEvil()</script>';
 
-        var marginRight = spanElement
-            && goog.style.getComputedStyle(spanElement, 'margin-right');
-        var marginLeft = spanElement
-            && goog.style.getComputedStyle(spanElement, 'margin-left');
+        var margins = getSpanMargins();
+        var marginLeft = margins.left;
+        var marginRight = margins.right;
 
         assert.isOk(!/expression/i.test(marginRight), marginRight || undefined);
         assert.isOk(!/expression/i.test(marginLeft), marginLeft || undefined);
