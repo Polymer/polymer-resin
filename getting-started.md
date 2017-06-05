@@ -176,13 +176,13 @@ function dumpPolymerResinDebugTelemetry() {
 
 security.polymer_resin.install(
     {
-      'reportHandler`: telemetryGatheringReportHandler
+      'reportHandler': telemetryGatheringReportHandler,
 
       // Allow application to progress as normal so we can
       // exercise as much of the app as possible without working
       // around problems caused by false positives.
       // HACK: DO NOT RUN IN PROD.
-      'UNSAFE_passThruDisallowedValues': true,
+      'UNSAFE_passThruDisallowedValues': true
     })
 </script>
 ```
