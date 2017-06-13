@@ -130,6 +130,38 @@ security.polymer_resin.ValueHandler;
 
 
 /**
+ * A report handler that logs to the browser's developer console.
+ * <p>
+ * This report handler is used if none is explicitly specified and
+ * goog.DEBUG is true at install time.
+ * <p>
+ * Violations (see isViolation in ReportHandler docs) are logged as warnings.
+ * Logging an error while running tests causes some  unit testing frameworks
+ * to report the test as failing.  Tests that wish to assert that polymer-resin
+ * is denying a value can instead check for the innocuous value.
+ * <p>
+ * Exceptions thrown by a report handler will propagate out of polymer-resin
+ * so a test suite may install a report handler that throws if unsafe
+ * value assignment should correspond to test failure.
+ *
+ * @type {!security.polymer_resin.ReportHandler}
+ * @const
+ */
+security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER =
+    function (isViolation, formatString, var_args) {
+      var consoleArgs = [formatString];
+      for (var i = 2, n = arguments.length; i < n; ++i) {
+        consoleArgs[i - 1] = arguments[i];
+      }
+      if (isViolation) {
+        console.warn.apply(console, consoleArgs);
+      } else {
+        console.log.apply(console, consoleArgs);
+      }
+    };
+
+
+/**
  * When called with (true), disallowed values will not be replaced so may reach
  * unsafe browser sinks resulting in a security violation.
  * <p>
@@ -256,18 +288,8 @@ security.polymer_resin.install = function (opt_config) {
 
   if (goog.DEBUG && security.polymer_resin.reportHandler_ === undefined
       && typeof console !== 'undefined') {
-    security.polymer_resin.reportHandler_ =
-        function (isViolation, formatString, var_args) {
-          var consoleArgs = [formatString];
-          for (var i = 2, n = arguments.length; i < n; ++i) {
-            consoleArgs[i - 1] = arguments[i];
-          }
-          if (isViolation) {
-            console.warn.apply(console, consoleArgs);
-          } else {
-            console.log.apply(console, consoleArgs);
-          }
-        };
+    security.polymer_resin.setReportHandler_(
+        security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER);
   }
 
   // TODO: check not in IE quirks mode.

@@ -2954,6 +2954,12 @@ security.polymer_resin.classifyElement = function(name, ctor) {
   }
   return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : ctor === HTMLUnknownElement ? security.polymer_resin.CustomElementClassification.LEGACY : ctor === HTMLElement && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
 };
+security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER = function(isViolation, formatString, var_args) {
+  for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
+    consoleArgs[i - 1] = arguments[i];
+  }
+  isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
+};
 security.polymer_resin.UNSAFE_passThruDisallowedValues_ = function(enable) {
   goog.DEBUG && (security.polymer_resin.allowUnsafeValues_ = !0 === enable);
 };
@@ -3043,18 +3049,13 @@ security.polymer_resin.install = function(opt_config) {
     var configUnsafePassThruDisallowedValues = opt_config.UNSAFE_passThruDisallowedValues, configAllowedIdentifierPrefixes = opt_config.allowedIdentifierPrefixes, configReportHandler = opt_config.reportHandler;
     null != configUnsafePassThruDisallowedValues && security.polymer_resin.UNSAFE_passThruDisallowedValues_(configUnsafePassThruDisallowedValues);
     if (configAllowedIdentifierPrefixes) {
-      for (var i$jscomp$0 = 0, n$jscomp$0 = configAllowedIdentifierPrefixes.length; i$jscomp$0 < n$jscomp$0; ++i$jscomp$0) {
-        security.polymer_resin.allowIdentifierWithPrefix_(configAllowedIdentifierPrefixes[i$jscomp$0]);
+      for (var i = 0, n = configAllowedIdentifierPrefixes.length; i < n; ++i) {
+        security.polymer_resin.allowIdentifierWithPrefix_(configAllowedIdentifierPrefixes[i]);
       }
     }
     void 0 !== configReportHandler && security.polymer_resin.setReportHandler_(configReportHandler);
   }
-  goog.DEBUG && void 0 === security.polymer_resin.reportHandler_ && "undefined" !== typeof console && (security.polymer_resin.reportHandler_ = function(isViolation, formatString, var_args) {
-    for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
-      consoleArgs[i - 1] = arguments[i];
-    }
-    isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
-  });
+  goog.DEBUG && void 0 === security.polymer_resin.reportHandler_ && "undefined" !== typeof console && security.polymer_resin.setReportHandler_(security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER);
   security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!1, "initResin");
   var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT_ = document.createElement("polyresinuncustomized");
   if (/^1\./.test(Polymer.version)) {
