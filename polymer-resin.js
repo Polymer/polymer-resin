@@ -39,6 +39,11 @@ goog.require('security.polymer_resin.CustomElementClassification');
 goog.require('security.polymer_resin.classifyElement');
 goog.require('security.polymer_resin.hintUsesDeprecatedRegisterElement');
 
+/**
+ * @define {boolean} whether bundled with its dependencies while
+ *     exporting its public API.
+ */
+goog.define('security.polymer_resin.STANDALONE', false);
 
 /**
  * Type for a configuration object that can be passed to install.
@@ -219,9 +224,15 @@ security.polymer_resin.setReportHandler_ = function (reportHandler) {
 
 
 
-goog.exportSymbol(
-    'security.polymer_resin.install',
-    security.polymer_resin.install);
+if (security.polymer_resin.STANDALONE) {
+  goog.exportSymbol(
+      'security.polymer_resin.install',
+      security.polymer_resin.install);
+
+  goog.exportSymbol(
+      'security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER',
+      security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER);
+}
 
 
 /**
