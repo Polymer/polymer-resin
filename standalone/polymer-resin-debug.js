@@ -2954,7 +2954,7 @@ security.polymer_resin.classifyElement = function(name, ctor) {
   }
   return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : ctor === HTMLUnknownElement ? security.polymer_resin.CustomElementClassification.LEGACY : ctor === HTMLElement && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
 };
-security.polymer_resin.STANDALONE = !0;
+security.polymer_resin.STANDALONE = !1;
 security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER = function(isViolation, formatString, var_args) {
   for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
     consoleArgs[i - 1] = arguments[i];
@@ -2970,7 +2970,6 @@ security.polymer_resin.allowIdentifierWithPrefix_ = function(prefix) {
 security.polymer_resin.setReportHandler_ = function(reportHandler) {
   security.polymer_resin.reportHandler_ = reportHandler || null;
 };
-security.polymer_resin.STANDALONE && (goog.exportSymbol("security.polymer_resin.install", security.polymer_resin.install), goog.exportSymbol("security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER", security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER));
 security.polymer_resin.allowedIdentifierPattern_ = /^$/;
 security.polymer_resin.allowUnsafeValues_ = !1;
 security.polymer_resin.reportHandler_ = void 0;
@@ -3116,4 +3115,5 @@ security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_
 security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
   return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : security.polymer_resin.INNOCUOUS_STRING_;
 }, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, typeToUnwrap:goog.string.Const, unwrap:goog.string.Const.unwrap};
+security.polymer_resin.STANDALONE && (goog.exportSymbol("security.polymer_resin.install", security.polymer_resin.install), goog.exportSymbol("security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER", security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER));
 

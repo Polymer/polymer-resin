@@ -18,6 +18,8 @@ export TEST_ROOT_DIR="$(mktemp -d "$TMPDIR"/wct_root.XXXXXXXXXX)"
 [ -d "$TEST_ROOT_DIR" ]
 
 
+# `copy_over $d $f` copies $f to the relative path $d/$f under the
+# test root creating parent directories as necessary.
 function copy_over() {
   local D="$1"
   local F="$2"
@@ -31,7 +33,7 @@ function copy_over() {
 
 pushd "$SRC_DIR"
 
-for f in *test.{html,js}
+for f in *test.{html,js} standalone/*.{html,js}
 do
   copy_over polymer-resin "$f"
 done
@@ -53,7 +55,8 @@ echo '
       WCT.loadSuites([' \
         > "$TEST_SUITE_HTML"
 
-for f in *test.html; do
+for f in *test.html standalone/*test.html
+do
   echo "          '../$f'," >> "$TEST_SUITE_HTML"
 done
 

@@ -222,19 +222,6 @@ security.polymer_resin.setReportHandler_ = function (reportHandler) {
   security.polymer_resin.reportHandler_ = reportHandler || null;
 };
 
-
-
-if (security.polymer_resin.STANDALONE) {
-  goog.exportSymbol(
-      'security.polymer_resin.install',
-      security.polymer_resin.install);
-
-  goog.exportSymbol(
-      'security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER',
-      security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER);
-}
-
-
 /**
  * @type {!RegExp}
  * @private
@@ -788,3 +775,14 @@ security.polymer_resin.VALUE_HANDLERS_[
   typeToUnwrap: goog.string.Const,
   unwrap: goog.string.Const.unwrap
 };
+
+
+if (security.polymer_resin.STANDALONE) {
+  goog.exportSymbol(
+      'security.polymer_resin.install',
+      security.polymer_resin.install);
+
+  goog.exportSymbol(
+      'security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER',
+      security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER);
+}
