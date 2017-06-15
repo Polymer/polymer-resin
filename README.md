@@ -1,6 +1,15 @@
 # Polymer Resin [![Build Status][build-status]][build-dashboard]
 
+
 XSS mitigation for Polymer webcomponents.
+
+----
+
+This document explains **what** polymer-resin is.  See
+["Getting Started"][getting-started] if you're interested in **how**
+to use it.
+
+----
 
 Relevant Concepts & Specs
 
@@ -403,6 +412,8 @@ $ ./run_tests.sh -p -l chrome
 causes it to keep the server open.
 See the log output for the localhost URL to browse to.
 
+
+[getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md@getting-started
 
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary

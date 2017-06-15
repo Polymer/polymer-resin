@@ -4,6 +4,8 @@
 *   [Migrating an app or element to work with polymer-resin](#migrating)
 *   [Debugging an app or element that uses polymer-resin](#debugging)
 *   [End-to-end safety](#end-to-end)
+*   [Caveats](#caveats)
+*   [FAQ](#faq)
 
 This document explains how to use *polymer-resin*. See [README.md](README.md) if
 you want to know what *polymer-resin* is.
@@ -287,10 +289,77 @@ If you find that something is rejected that is innocuous, file a [bug][issues].
 Polymer-resin whitelists elements and attributes, and our whitelist is probably
 incomplete.
 
-## End-to-end safety
+## <a name="end-to-end"></a>End-to-end safety
 
 TODO: talk about using in conjunction with JSConformance and `--polymer_pass` to
-check sanitariness of JS and sources of safe html types.
+check sanitariness of JS and sources of safe html types.  We're going to base
+this on
+[the JSConformance sample policy](https://github.com/google/closure-compiler/blob/master/src/com/google/javascript/jscomp/example_conformance_proto.textproto)
+or
+[the closure-maven-plugin policy](https://github.com/mikesamuel/closure-maven-plugin/blob/master/plugin/src/it/demo/src/main/js/jsconf.textproto)
+demo, but writing this section prior to deploying one alongside polymer-resin is
+premature.
+
+## <a name="caveats"></a>Caveats
+
+Polymer-resin provides a high level of confidence that Polymer templates will
+not unintentionally
+
+1.  Execute code contained in third party strings or load code from URLs
+    specified by a third party, or
+2.  send data to a location specified by a third party, or
+3.  allow third-parties to introduce element IDs except in specified namespaces.
+
+Polymer-resin can fail to protect an app in some circumstances.
+
+1.  There might be bugs in polymer-resin. Polymer-resin has been developed and
+    reviewed by Google's security engineering team but bugs with security
+    consequences have been found in similar systems.
+2.  JavaScript code that assigns to properties of builtin elements instead of
+    via Polymer data bindings. See [end to end](#end-to-end) for an explanation
+    of how to use JSConformance to secure your JavaScript.
+3.  Incorrect use of [unchecked conversions][unchecked-conversions]
+4.  XSS in server-side HTML generation. This affects the HTML before
+    polymer-resin has a chance to run. Use a contextually auto-escaped template
+    system to generate your server-side HTML.
+
+## <a name="faq"></a>FAQ
+
+### Should I stop reviewing code for security vulnerabilities?
+
+No. Just because polymer-resin is preventing attacker controlled values from
+reaching browser internals does not mean that one can safely ignore injection
+vulnerabilities.
+
+It is good to have [defense in depth][d.i.d.]. Polymer-resin may have bugs or
+browsers may change so that what was once safe no longer is. The latter can be
+mitigated by upgrading regularly, but the probability that polymer-resin fails
+*and* an attacker finds a way to get a payload to vulnerable code is still lower
+than the probability that polymer-resin fails, so reviewing code for
+vulnerabilities still contributes to safety.
+
+Injection vulnerabilities often occur when code is incorrect. Polymer-resin may
+prevent incorrectness from having security consequences but it may still affect
+user experience. For example, in the below, the favoriteColor does not reach the
+browser's CSS parser, but the value for `<select>` still corresponds to no
+option.
+
+```html
+<template>
+  <div style="color: [[favoriteColor]]">[[favoriteColor]]</div>
+  <select value="{{favoriteColor::change}}">
+    <template is="dom-repeat" items="{{colors}}">
+      <option value="{{item}}">{{item}}</option>
+    </template>
+  </select>
+</template>
+```
+
+Polymer-resin stops data-bound values from reaching browser sinks, but if an
+attacker can thread a value all the way through frontends and storage systems to
+a data binding expression, it's more likely that they can get it to other common
+targets like JavaScript, server-side template languages, and database query
+engines.
 
 [vulcanize]: http://closuretools.blogspot.com/2016/10/polymer-closure-compiler-in-gulp.html
 [goog.html]: https://github.com/google/closure-library/tree/master/closure/goog/html
@@ -305,3 +374,5 @@ check sanitariness of JS and sources of safe html types.
 [csp-report-only]: https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Content-Security-Policy-Report-Only
 [releases]: https://github.com/Polymer/polymer-resin/releases
 [issues]: https://github.com/Polymer/polymer-resin/issues
+[d.i.d.]: https://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29
+[unchecked-conversions]: https://github.com/google/safe-html-types/blob/master/doc/safehtml-unchecked.md
