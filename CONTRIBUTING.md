@@ -7,7 +7,7 @@ contributors also apply to this project
 ## Vulnerabilities, Bugs, & Pull Requests
 
 Please do not file security-related bugs on the issue tracker.  Instead
-use [Google's security vulnerability disclosure form](https://goog.gl/vulnz).
+use [Google's security vulnerability disclosure form](https://goo.gl/vulnz).
 Please see [bug notes] for details.
 
 We use our Github [issue tracker] for tracking feature requests and
