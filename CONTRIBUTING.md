@@ -4,17 +4,17 @@ We appreciate contributions.  All of the
 [main Polymer project][polymer-contributing] guidelines for
 contributors also apply to this project
 
-## Bugs & Pull Requests
+## Vulnerabilities, Bugs, & Pull Requests
 
-We use our Github [issue tracker][issue tracker] for tracking bugs, and if you
-have a patch, please use our Github [PR queue].  Don't be suprised if your
-first PR gets a visit from the [CLA bot][CLA bot].
+Please do not file security-related bugs on the issue tracker.  Instead
+use [Google's security vulnerability disclosure form](https://goog.gl/vulnz).
+Please see [bug notes] for details.
 
-## Security
+We use our Github [issue tracker] for tracking feature requests and
+non-security-related bugs.
 
-Please [disclose vulnerabilities responsibly][sec-disclosure].
-As part of Polymer, the Polymer resin project participates in
-Google's [Vulnerability Rewards][vrp] and [Patch Rewards][prp] Programs.
+If you have a patch, please use our Github [PR queue].  Don't be suprised if
+your first PR gets a visit from the [CLA bot].
 
 
 [polymer-contributing]: https://github.com/Polymer/polymer/blob/master/CONTRIBUTING.md
@@ -24,3 +24,4 @@ Google's [Vulnerability Rewards][vrp] and [Patch Rewards][prp] Programs.
 [vrp]: https://www.google.com/about/appsecurity/reward-program/
 [prp]: http://www.google.com/about/appsecurity/patch-rewards/
 [CLA bot]: https://github.com/Polymer/polymer/blob/master/CONTRIBUTING.md#contributor-license-agreement
+[bug notes]: .github/ISSUE_TEMPLATE.md
