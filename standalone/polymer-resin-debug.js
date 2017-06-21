@@ -2066,148 +2066,6 @@ goog.html.SafeScript.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(
   return this;
 };
 goog.html.SafeScript.EMPTY = goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse("");
-goog.html.SafeStyle = function() {
-  this.privateDoNotAccessOrElseSafeStyleWrappedValue_ = "";
-  this.SAFE_STYLE_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
-};
-goog.html.SafeStyle.prototype.implementsGoogStringTypedString = !0;
-goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
-goog.html.SafeStyle.fromConstant = function(style) {
-  var styleString = goog.string.Const.unwrap(style);
-  if (0 === styleString.length) {
-    return goog.html.SafeStyle.EMPTY;
-  }
-  goog.html.SafeStyle.checkStyle_(styleString);
-  goog.asserts.assert(goog.string.endsWith(styleString, ";"), "Last character of style string is not ';': " + styleString);
-  goog.asserts.assert(goog.string.contains(styleString, ":"), "Style string must contain at least one ':', to specify a \"name: value\" pair: " + styleString);
-  return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(styleString);
-};
-goog.html.SafeStyle.checkStyle_ = function(style) {
-  goog.asserts.assert(!/[<>]/.test(style), "Forbidden characters in style string: " + style);
-};
-goog.html.SafeStyle.prototype.getTypedStringValue = function() {
-  return this.privateDoNotAccessOrElseSafeStyleWrappedValue_;
-};
-goog.DEBUG && (goog.html.SafeStyle.prototype.toString = function() {
-  return "SafeStyle{" + this.privateDoNotAccessOrElseSafeStyleWrappedValue_ + "}";
-});
-goog.html.SafeStyle.unwrap = function(safeStyle) {
-  if (safeStyle instanceof goog.html.SafeStyle && safeStyle.constructor === goog.html.SafeStyle && safeStyle.SAFE_STYLE_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
-    return safeStyle.privateDoNotAccessOrElseSafeStyleWrappedValue_;
-  }
-  goog.asserts.fail("expected object of type SafeStyle, got '" + safeStyle + "' of type " + goog.typeOf(safeStyle));
-  return "type_error:SafeStyle";
-};
-goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse = function(style) {
-  return (new goog.html.SafeStyle).initSecurityPrivateDoNotAccessOrElse_(style);
-};
-goog.html.SafeStyle.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(style) {
-  this.privateDoNotAccessOrElseSafeStyleWrappedValue_ = style;
-  return this;
-};
-goog.html.SafeStyle.EMPTY = goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse("");
-goog.html.SafeStyle.INNOCUOUS_STRING = "zClosurez";
-goog.html.SafeStyle.create = function(map) {
-  var style = "", name;
-  for (name in map) {
-    if (!/^[-_a-zA-Z0-9]+$/.test(name)) {
-      throw Error("Name allows only [-_a-zA-Z0-9], got: " + name);
-    }
-    var value = map[name];
-    null != value && (value instanceof goog.string.Const ? (value = goog.string.Const.unwrap(value), goog.asserts.assert(!/[{;}]/.test(value), "Value does not allow [{;}].")) : goog.html.SafeStyle.VALUE_RE_.test(value) ? goog.html.SafeStyle.hasBalancedQuotes_(value) || (goog.asserts.fail("String value requires balanced quotes, got: " + value), value = goog.html.SafeStyle.INNOCUOUS_STRING) : (goog.asserts.fail("String value allows only [-,.\"'%_!# a-zA-Z0-9] and simple functions, got: " + value), 
-    value = goog.html.SafeStyle.INNOCUOUS_STRING), style += name + ":" + value + ";");
-  }
-  if (!style) {
-    return goog.html.SafeStyle.EMPTY;
-  }
-  goog.html.SafeStyle.checkStyle_(style);
-  return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style);
-};
-goog.html.SafeStyle.hasBalancedQuotes_ = function(value) {
-  for (var outsideSingle = !0, outsideDouble = !0, i = 0; i < value.length; i++) {
-    var c = value.charAt(i);
-    "'" == c && outsideDouble ? outsideSingle = !outsideSingle : '"' == c && outsideSingle && (outsideDouble = !outsideDouble);
-  }
-  return outsideSingle && outsideDouble;
-};
-goog.html.SafeStyle.VALUE_RE_ = /^([-,."'%_!# a-zA-Z0-9]+|(hsl|hsla|rgb|rgba|(rotate|scale|translate)(X|Y|Z|3d)?)\([-0-9a-z.%, ]+\))$/;
-goog.html.SafeStyle.concat = function(var_args) {
-  var style = "", addArgument = function(argument) {
-    goog.isArray(argument) ? goog.array.forEach(argument, addArgument) : style += goog.html.SafeStyle.unwrap(argument);
-  };
-  goog.array.forEach(arguments, addArgument);
-  return style ? goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style) : goog.html.SafeStyle.EMPTY;
-};
-goog.html.SafeStyleSheet = function() {
-  this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_ = "";
-  this.SAFE_STYLE_SHEET_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
-};
-goog.html.SafeStyleSheet.prototype.implementsGoogStringTypedString = !0;
-goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
-goog.html.SafeStyleSheet.createRule = function(selector, style) {
-  if (goog.string.contains(selector, "<")) {
-    throw Error("Selector does not allow '<', got: " + selector);
-  }
-  var selectorToCheck = selector.replace(/('|")((?!\1)[^\r\n\f\\]|\\[\s\S])*\1/g, "");
-  if (!/^[-_a-zA-Z0-9#.:* ,>+~[\]()=^$|]+$/.test(selectorToCheck)) {
-    throw Error("Selector allows only [-_a-zA-Z0-9#.:* ,>+~[\\]()=^$|] and strings, got: " + selector);
-  }
-  if (!goog.html.SafeStyleSheet.hasBalancedBrackets_(selectorToCheck)) {
-    throw Error("() and [] in selector must be balanced, got: " + selector);
-  }
-  style instanceof goog.html.SafeStyle || (style = goog.html.SafeStyle.create(style));
-  var styleSheet = selector + "{" + goog.html.SafeStyle.unwrap(style) + "}";
-  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheet);
-};
-goog.html.SafeStyleSheet.hasBalancedBrackets_ = function(s) {
-  for (var brackets = {"(":")", "[":"]"}, expectedBrackets = [], i = 0; i < s.length; i++) {
-    var ch = s[i];
-    if (brackets[ch]) {
-      expectedBrackets.push(brackets[ch]);
-    } else {
-      if (goog.object.contains(brackets, ch) && expectedBrackets.pop() != ch) {
-        return !1;
-      }
-    }
-  }
-  return 0 == expectedBrackets.length;
-};
-goog.html.SafeStyleSheet.concat = function(var_args) {
-  var result = "", addArgument = function(argument) {
-    goog.isArray(argument) ? goog.array.forEach(argument, addArgument) : result += goog.html.SafeStyleSheet.unwrap(argument);
-  };
-  goog.array.forEach(arguments, addArgument);
-  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(result);
-};
-goog.html.SafeStyleSheet.fromConstant = function(styleSheet) {
-  var styleSheetString = goog.string.Const.unwrap(styleSheet);
-  if (0 === styleSheetString.length) {
-    return goog.html.SafeStyleSheet.EMPTY;
-  }
-  goog.asserts.assert(!goog.string.contains(styleSheetString, "<"), "Forbidden '<' character in style sheet string: " + styleSheetString);
-  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheetString);
-};
-goog.html.SafeStyleSheet.prototype.getTypedStringValue = function() {
-  return this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_;
-};
-goog.DEBUG && (goog.html.SafeStyleSheet.prototype.toString = function() {
-  return "SafeStyleSheet{" + this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_ + "}";
-});
-goog.html.SafeStyleSheet.unwrap = function(safeStyleSheet) {
-  if (safeStyleSheet instanceof goog.html.SafeStyleSheet && safeStyleSheet.constructor === goog.html.SafeStyleSheet && safeStyleSheet.SAFE_STYLE_SHEET_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
-    return safeStyleSheet.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_;
-  }
-  goog.asserts.fail("expected object of type SafeStyleSheet, got '" + safeStyleSheet + "' of type " + goog.typeOf(safeStyleSheet));
-  return "type_error:SafeStyleSheet";
-};
-goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse = function(styleSheet) {
-  return (new goog.html.SafeStyleSheet).initSecurityPrivateDoNotAccessOrElse_(styleSheet);
-};
-goog.html.SafeStyleSheet.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(styleSheet) {
-  this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_ = styleSheet;
-  return this;
-};
-goog.html.SafeStyleSheet.EMPTY = goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse("");
 goog.i18n = {};
 goog.i18n.bidi = {};
 goog.i18n.bidi.FORCE_RTL = !1;
@@ -2359,21 +2217,31 @@ goog.html.TrustedResourceUrl.unwrap = function(trustedResourceUrl) {
   return "type_error:TrustedResourceUrl";
 };
 goog.html.TrustedResourceUrl.format = function(format, args) {
+  var result = goog.html.TrustedResourceUrl.format_(format, args);
+  return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(result);
+};
+goog.html.TrustedResourceUrl.format_ = function(format, args) {
   var formatStr = goog.string.Const.unwrap(format);
   if (!goog.html.TrustedResourceUrl.BASE_URL_.test(formatStr)) {
     throw Error("Invalid TrustedResourceUrl format: " + formatStr);
   }
-  var result = formatStr.replace(goog.html.TrustedResourceUrl.FORMAT_MARKER_, function(match, id) {
+  return formatStr.replace(goog.html.TrustedResourceUrl.FORMAT_MARKER_, function(match, id) {
     if (!Object.prototype.hasOwnProperty.call(args, id)) {
       throw Error('Found marker, "' + id + '", in format string, "' + formatStr + '", but no valid label mapping found in args: ' + JSON.stringify(args));
     }
     var arg = args[id];
     return arg instanceof goog.string.Const ? goog.string.Const.unwrap(arg) : encodeURIComponent(String(arg));
   });
-  return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(result);
 };
 goog.html.TrustedResourceUrl.FORMAT_MARKER_ = /%{(\w+)}/g;
 goog.html.TrustedResourceUrl.BASE_URL_ = /^(?:https:)?\/\/[0-9a-z.:[\]-]+\/|^\/[^\/\\]|^about:blank(#|$)/i;
+goog.html.TrustedResourceUrl.formatWithParams = function(format, args, params) {
+  var url = goog.html.TrustedResourceUrl.format_(format, args), separator = /\?/.test(url) ? "&" : "?", key;
+  for (key in params) {
+    null != params[key] && (url += separator + encodeURIComponent(key) + "=" + encodeURIComponent(String(params[key])), separator = "&");
+  }
+  return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(url);
+};
 goog.html.TrustedResourceUrl.fromConstant = function(url) {
   return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(goog.string.Const.unwrap(url));
 };
@@ -2448,6 +2316,160 @@ goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse = function(url) 
   return safeUrl;
 };
 goog.html.SafeUrl.ABOUT_BLANK = goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse("about:blank");
+goog.html.SafeStyle = function() {
+  this.privateDoNotAccessOrElseSafeStyleWrappedValue_ = "";
+  this.SAFE_STYLE_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
+};
+goog.html.SafeStyle.prototype.implementsGoogStringTypedString = !0;
+goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
+goog.html.SafeStyle.fromConstant = function(style) {
+  var styleString = goog.string.Const.unwrap(style);
+  if (0 === styleString.length) {
+    return goog.html.SafeStyle.EMPTY;
+  }
+  goog.html.SafeStyle.checkStyle_(styleString);
+  goog.asserts.assert(goog.string.endsWith(styleString, ";"), "Last character of style string is not ';': " + styleString);
+  goog.asserts.assert(goog.string.contains(styleString, ":"), "Style string must contain at least one ':', to specify a \"name: value\" pair: " + styleString);
+  return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(styleString);
+};
+goog.html.SafeStyle.checkStyle_ = function(style) {
+  goog.asserts.assert(!/[<>]/.test(style), "Forbidden characters in style string: " + style);
+};
+goog.html.SafeStyle.prototype.getTypedStringValue = function() {
+  return this.privateDoNotAccessOrElseSafeStyleWrappedValue_;
+};
+goog.DEBUG && (goog.html.SafeStyle.prototype.toString = function() {
+  return "SafeStyle{" + this.privateDoNotAccessOrElseSafeStyleWrappedValue_ + "}";
+});
+goog.html.SafeStyle.unwrap = function(safeStyle) {
+  if (safeStyle instanceof goog.html.SafeStyle && safeStyle.constructor === goog.html.SafeStyle && safeStyle.SAFE_STYLE_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeStyle.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
+    return safeStyle.privateDoNotAccessOrElseSafeStyleWrappedValue_;
+  }
+  goog.asserts.fail("expected object of type SafeStyle, got '" + safeStyle + "' of type " + goog.typeOf(safeStyle));
+  return "type_error:SafeStyle";
+};
+goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse = function(style) {
+  return (new goog.html.SafeStyle).initSecurityPrivateDoNotAccessOrElse_(style);
+};
+goog.html.SafeStyle.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(style) {
+  this.privateDoNotAccessOrElseSafeStyleWrappedValue_ = style;
+  return this;
+};
+goog.html.SafeStyle.EMPTY = goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse("");
+goog.html.SafeStyle.INNOCUOUS_STRING = "zClosurez";
+goog.html.SafeStyle.create = function(map) {
+  var style = "", name;
+  for (name in map) {
+    if (!/^[-_a-zA-Z0-9]+$/.test(name)) {
+      throw Error("Name allows only [-_a-zA-Z0-9], got: " + name);
+    }
+    var value = map[name];
+    null != value && (value instanceof goog.string.Const ? (value = goog.string.Const.unwrap(value), goog.asserts.assert(!/[{;}]/.test(value), "Value does not allow [{;}].")) : (value = String(value), goog.html.SafeStyle.VALUE_RE_.test(value.replace(goog.html.SafeUrl.URL_RE_, "url")) ? goog.html.SafeStyle.hasBalancedQuotes_(value) ? value = goog.html.SafeStyle.sanitizeUrl_(value) : (goog.asserts.fail("String value requires balanced quotes, got: " + value), value = goog.html.SafeStyle.INNOCUOUS_STRING) : 
+    (goog.asserts.fail("String value allows only [-,.\"'%_!# a-zA-Z0-9] and simple functions, got: " + value), value = goog.html.SafeStyle.INNOCUOUS_STRING)), style += name + ":" + value + ";");
+  }
+  if (!style) {
+    return goog.html.SafeStyle.EMPTY;
+  }
+  goog.html.SafeStyle.checkStyle_(style);
+  return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style);
+};
+goog.html.SafeStyle.hasBalancedQuotes_ = function(value) {
+  for (var outsideSingle = !0, outsideDouble = !0, i = 0; i < value.length; i++) {
+    var c = value.charAt(i);
+    "'" == c && outsideDouble ? outsideSingle = !outsideSingle : '"' == c && outsideSingle && (outsideDouble = !outsideDouble);
+  }
+  return outsideSingle && outsideDouble;
+};
+goog.html.SafeStyle.VALUE_RE_ = /^([-,."'%_!# a-zA-Z0-9]+|(hsl|hsla|rgb|rgba|(rotate|scale|translate)(X|Y|Z|3d)?)\([-0-9a-z.%, ]+\))$/;
+goog.html.SafeUrl.URL_RE_ = /\b(url\([ \t\n]*)('[ -&(-\[\]-~]*'|"[ !#-\[\]-~]*"|[!#-&*-\[\]-~]*)([ \t\n]*\))/g;
+goog.html.SafeStyle.sanitizeUrl_ = function(value) {
+  return value.replace(goog.html.SafeUrl.URL_RE_, function(match$jscomp$0, before, url, after) {
+    var quote = "";
+    url = url.replace(/^(['"])(.*)\1$/, function(match, start, inside) {
+      quote = start;
+      return inside;
+    });
+    var sanitized = goog.html.SafeUrl.sanitize(url).getTypedStringValue();
+    return before + quote + sanitized + quote + after;
+  });
+};
+goog.html.SafeStyle.concat = function(var_args) {
+  var style = "", addArgument = function(argument) {
+    goog.isArray(argument) ? goog.array.forEach(argument, addArgument) : style += goog.html.SafeStyle.unwrap(argument);
+  };
+  goog.array.forEach(arguments, addArgument);
+  return style ? goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style) : goog.html.SafeStyle.EMPTY;
+};
+goog.html.SafeStyleSheet = function() {
+  this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_ = "";
+  this.SAFE_STYLE_SHEET_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
+};
+goog.html.SafeStyleSheet.prototype.implementsGoogStringTypedString = !0;
+goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
+goog.html.SafeStyleSheet.createRule = function(selector, style) {
+  if (goog.string.contains(selector, "<")) {
+    throw Error("Selector does not allow '<', got: " + selector);
+  }
+  var selectorToCheck = selector.replace(/('|")((?!\1)[^\r\n\f\\]|\\[\s\S])*\1/g, "");
+  if (!/^[-_a-zA-Z0-9#.:* ,>+~[\]()=^$|]+$/.test(selectorToCheck)) {
+    throw Error("Selector allows only [-_a-zA-Z0-9#.:* ,>+~[\\]()=^$|] and strings, got: " + selector);
+  }
+  if (!goog.html.SafeStyleSheet.hasBalancedBrackets_(selectorToCheck)) {
+    throw Error("() and [] in selector must be balanced, got: " + selector);
+  }
+  style instanceof goog.html.SafeStyle || (style = goog.html.SafeStyle.create(style));
+  var styleSheet = selector + "{" + goog.html.SafeStyle.unwrap(style) + "}";
+  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheet);
+};
+goog.html.SafeStyleSheet.hasBalancedBrackets_ = function(s) {
+  for (var brackets = {"(":")", "[":"]"}, expectedBrackets = [], i = 0; i < s.length; i++) {
+    var ch = s[i];
+    if (brackets[ch]) {
+      expectedBrackets.push(brackets[ch]);
+    } else {
+      if (goog.object.contains(brackets, ch) && expectedBrackets.pop() != ch) {
+        return !1;
+      }
+    }
+  }
+  return 0 == expectedBrackets.length;
+};
+goog.html.SafeStyleSheet.concat = function(var_args) {
+  var result = "", addArgument = function(argument) {
+    goog.isArray(argument) ? goog.array.forEach(argument, addArgument) : result += goog.html.SafeStyleSheet.unwrap(argument);
+  };
+  goog.array.forEach(arguments, addArgument);
+  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(result);
+};
+goog.html.SafeStyleSheet.fromConstant = function(styleSheet) {
+  var styleSheetString = goog.string.Const.unwrap(styleSheet);
+  if (0 === styleSheetString.length) {
+    return goog.html.SafeStyleSheet.EMPTY;
+  }
+  goog.asserts.assert(!goog.string.contains(styleSheetString, "<"), "Forbidden '<' character in style sheet string: " + styleSheetString);
+  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheetString);
+};
+goog.html.SafeStyleSheet.prototype.getTypedStringValue = function() {
+  return this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_;
+};
+goog.DEBUG && (goog.html.SafeStyleSheet.prototype.toString = function() {
+  return "SafeStyleSheet{" + this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_ + "}";
+});
+goog.html.SafeStyleSheet.unwrap = function(safeStyleSheet) {
+  if (safeStyleSheet instanceof goog.html.SafeStyleSheet && safeStyleSheet.constructor === goog.html.SafeStyleSheet && safeStyleSheet.SAFE_STYLE_SHEET_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
+    return safeStyleSheet.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_;
+  }
+  goog.asserts.fail("expected object of type SafeStyleSheet, got '" + safeStyleSheet + "' of type " + goog.typeOf(safeStyleSheet));
+  return "type_error:SafeStyleSheet";
+};
+goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse = function(styleSheet) {
+  return (new goog.html.SafeStyleSheet).initSecurityPrivateDoNotAccessOrElse_(styleSheet);
+};
+goog.html.SafeStyleSheet.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(styleSheet) {
+  this.privateDoNotAccessOrElseSafeStyleSheetWrappedValue_ = styleSheet;
+  return this;
+};
+goog.html.SafeStyleSheet.EMPTY = goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse("");
 goog.labs = {};
 goog.labs.userAgent = {};
 goog.labs.userAgent.util = {};
@@ -2881,12 +2903,12 @@ rel:security.html.contracts.AttrType.NONE, required:security.html.contracts.Attr
 src:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, start:security.html.contracts.AttrType.NONE, step:security.html.contracts.AttrType.NONE, style:security.html.contracts.AttrType.SAFE_STYLE, summary:security.html.contracts.AttrType.NONE, tabindex:security.html.contracts.AttrType.NONE, target:security.html.contracts.AttrType.ENUM, title:security.html.contracts.AttrType.NONE, translate:security.html.contracts.AttrType.NONE, valign:security.html.contracts.AttrType.NONE, value:security.html.contracts.AttrType.NONE, 
 width:security.html.contracts.AttrType.NONE, wrap:security.html.contracts.AttrType.NONE};
 security.html.contracts.ELEMENT_CONTRACTS_ = {a:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, area:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, audio:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, blockquote:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, button:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, 
-command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], max:[{contract:security.html.contracts.AttrType.NONE}], 
-min:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], step:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"author"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"bookmark"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"canonical"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"cite"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"help"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"icon"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"license"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"next"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prerender"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"prev"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"search"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"subresource"}], media:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, menuitem:{icon:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, ol:{type:[{contract:security.html.contracts.AttrType.NONE}]}, 
-q:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, source:{media:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, style:{media:[{contract:security.html.contracts.AttrType.NONE}]}, video:{poster:[{contract:security.html.contracts.AttrType.SAFE_URL}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}};
+command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
+type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"author"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"bookmark"}, 
+{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"canonical"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"cite"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"help"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"icon"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"license"}, 
+{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"next"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prerender"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prev"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", 
+requiredValue:"search"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"subresource"}], media:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, menuitem:{icon:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, ol:{type:[{contract:security.html.contracts.AttrType.NONE}]}, q:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, source:{media:[{contract:security.html.contracts.AttrType.NONE}], 
+src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, style:{media:[{contract:security.html.contracts.AttrType.NONE}]}, video:{poster:[{contract:security.html.contracts.AttrType.SAFE_URL}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}};
 security.html.contracts.ELEMENT_CONTENT_TYPES_ = {a:security.html.contracts.ElementContentType.SAFE_HTML, abbr:security.html.contracts.ElementContentType.SAFE_HTML, address:security.html.contracts.ElementContentType.SAFE_HTML, applet:security.html.contracts.ElementContentType.BLACKLIST, area:security.html.contracts.ElementContentType.VOID, article:security.html.contracts.ElementContentType.SAFE_HTML, aside:security.html.contracts.ElementContentType.SAFE_HTML, audio:security.html.contracts.ElementContentType.SAFE_HTML, 
 b:security.html.contracts.ElementContentType.SAFE_HTML, base:security.html.contracts.ElementContentType.BLACKLIST, bdi:security.html.contracts.ElementContentType.SAFE_HTML, bdo:security.html.contracts.ElementContentType.SAFE_HTML, blockquote:security.html.contracts.ElementContentType.SAFE_HTML, body:security.html.contracts.ElementContentType.SAFE_HTML, br:security.html.contracts.ElementContentType.VOID, button:security.html.contracts.ElementContentType.SAFE_HTML, canvas:security.html.contracts.ElementContentType.SAFE_HTML, 
 caption:security.html.contracts.ElementContentType.SAFE_HTML, cite:security.html.contracts.ElementContentType.SAFE_HTML, code:security.html.contracts.ElementContentType.SAFE_HTML, col:security.html.contracts.ElementContentType.VOID, colgroup:security.html.contracts.ElementContentType.SAFE_HTML, command:security.html.contracts.ElementContentType.SAFE_HTML, data:security.html.contracts.ElementContentType.SAFE_HTML, datalist:security.html.contracts.ElementContentType.SAFE_HTML, dd:security.html.contracts.ElementContentType.SAFE_HTML, 
