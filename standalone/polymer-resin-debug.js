@@ -2309,6 +2309,14 @@ goog.html.SafeUrl.sanitize = function(url) {
   goog.html.SAFE_URL_PATTERN_.test(url) || (url = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
+goog.html.SafeUrl.sanitizeAssertUnchanged = function(url) {
+  if (url instanceof goog.html.SafeUrl) {
+    return url;
+  }
+  url = url.implementsGoogStringTypedString ? url.getTypedStringValue() : String(url);
+  goog.asserts.assert(goog.html.SAFE_URL_PATTERN_.test(url)) || (url = goog.html.SafeUrl.INNOCUOUS_STRING);
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
+};
 goog.html.SafeUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
 goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse = function(url) {
   var safeUrl = new goog.html.SafeUrl;
