@@ -1,4 +1,4 @@
-# Getting Started
+
 
 *   [Loading polymer-resin into your app](#loading)
 *   [Migrating an app or element to work with polymer-resin](#migrating)
@@ -7,10 +7,12 @@
 *   [Caveats](#caveats)
 *   [FAQ](#faq)
 
-This document explains how to use *polymer-resin*. See [README.md](README.md) if
+This document explains how to use *polymer-resin*. See [README.md][README] if
 you want to know what *polymer-resin* is.
 
+
 ## <a name="loading">Loading polymer-resin into your app</a>
+
 
 ### Getting polymer-resin via bower
 
@@ -93,7 +95,7 @@ Before                                               | After
 The *webcomponents-lite.js* script makes sure that the document supports HTML
 importing, and must appear before polymer-resin is loaded.
 
-### Configuring
+### <a name="configuring">Configuring</a>
 
 The above Polymer document shows a synchronous script tag.
 
@@ -292,11 +294,11 @@ incomplete.
 ## <a name="end-to-end"></a>End-to-end safety
 
 TODO: talk about using in conjunction with JSConformance and `--polymer_pass` to
-check sanitariness of JS and sources of safe html types.  We're going to base
-this on
-[the JSConformance sample policy](https://github.com/google/closure-compiler/blob/master/src/com/google/javascript/jscomp/example_conformance_proto.textproto)
-or
-[the closure-maven-plugin policy](https://github.com/mikesamuel/closure-maven-plugin/blob/master/plugin/src/it/demo/src/main/js/jsconf.textproto)
+check sanitariness of JS and sources of safe html types. We're going to base
+this on [the JSConformance sample
+policy](https://github.com/google/closure-compiler/blob/master/src/com/google/javascript/jscomp/example_conformance_proto.textproto)
+or [the closure-maven-plugin
+policy](https://github.com/mikesamuel/closure-maven-plugin/blob/master/plugin/src/it/demo/src/main/js/jsconf.textproto)
 demo, but writing this section prior to deploying one alongside polymer-resin is
 premature.
 
@@ -360,6 +362,10 @@ attacker can thread a value all the way through frontends and storage systems to
 a data binding expression, it's more likely that they can get it to other common
 targets like JavaScript, server-side template languages, and database query
 engines.
+
+
+[README]: README.md
+
 
 [vulcanize]: http://closuretools.blogspot.com/2016/10/polymer-closure-compiler-in-gulp.html
 [goog.html]: https://github.com/google/closure-library/tree/master/closure/goog/html

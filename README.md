@@ -317,8 +317,8 @@ There are two main failure modes:
 1.  False negatives -- a failure to apply the appropriate handler to a payload.
 2.  False positives -- trustworthy code in a custom element definition
     constructs an attribute value that triggers a filter but does not wrap it in
-    an appropriate safe string type. For example `myElement.href =
-    “javascript:myVeryOwnFunction()”`
+    an appropriate safe string type. For example
+    `myElement.href = “javascript:myVeryOwnFunction()”`
 
 We can check for false negatives by writing custom elements
 
@@ -413,7 +413,9 @@ causes it to keep the server open.
 See the log output for the localhost URL to browse to.
 
 
-[getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md@getting-started
+[getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#getting-started
+
+
 
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary
