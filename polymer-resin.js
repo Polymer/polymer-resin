@@ -406,8 +406,12 @@ security.polymer_resin.install = function (opt_config) {
             case security.polymer_resin.CustomElementClassification.LEGACY:
               var contentType = security.html.contracts.contentTypeForElement(
                   parentElementName);
+              // TODO(user): treat STRING_RCDATA differently from SAFE_HTML
+              // (b/62487356).
               allowText = contentType
-                  === security.html.contracts.ElementContentType.SAFE_HTML;
+                  === security.html.contracts.ElementContentType.SAFE_HTML ||
+                  contentType
+                  === security.html.contracts.ElementContentType.STRING_RCDATA;
               break;
             case security.polymer_resin.CustomElementClassification.CUSTOMIZABLE:
             case security.polymer_resin.CustomElementClassification.CUSTOM:
@@ -510,7 +514,7 @@ security.polymer_resin.install = function (opt_config) {
     }
     if (security.polymer_resin.reportHandler_) {
       security.polymer_resin.reportHandler_(
-          true, 'Failed to sanitize in %s: <%s %s="%O">',
+          true, 'Failed to sanitize attribute of <%s>: <%s %s="%O">',
           elementName, elementName, attrName, value);
     }
 
@@ -541,8 +545,7 @@ security.polymer_resin.install = function (opt_config) {
     var origCompute = Polymer.Base._computeFinalAnnotationValue;
     var computeFinalAnnotationSafeValue =
         function computeFinalAnnotationValue(node, property, value, info) {
-          var finalValue = origCompute.call(
-              Polymer.Base, node, property, value, info);
+          var finalValue = origCompute.call(this, node, property, value, info);
           var type = 'property';
           var name;
           if (info && info.propertyName) {
@@ -560,8 +563,8 @@ security.polymer_resin.install = function (opt_config) {
         };
     Polymer.Base._computeFinalAnnotationValue =
         computeFinalAnnotationSafeValue;
-    if (Polymer.Base._computeFinalAnnotationValue
-        !== computeFinalAnnotationSafeValue) {
+    if (Polymer.Base._computeFinalAnnotationValue !==
+        computeFinalAnnotationSafeValue) {
       // We're in use strict, so assignment should fail-fast, but
       // this is cheap.
       throw new Error(
