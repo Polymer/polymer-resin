@@ -41,11 +41,7 @@ suite(
         function check(desc, x) {
           assert.isOk(
               ok(x),
-              {
-                toString: function () {
-                  return desc + ', want ' + want + ', got ' + x;
-                }
-              });
+              (desc + ', want ' + want + ', got ' + x));
         }
         check('input.id', input.id);
         check('input.name', input.name);
