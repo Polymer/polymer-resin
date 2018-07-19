@@ -1,5 +1,4 @@
 
-
 *   [Loading polymer-resin into your app](#loading)
 *   [Migrating an app or element to work with polymer-resin](#migrating)
 *   [Debugging an app or element that uses polymer-resin](#debugging)
@@ -45,7 +44,7 @@ bower install --save polymer-resin#1.2.3
 ### Downloading a release
 
 If you don't want to use bower, you can browse releases of polymer-resin via the
-project's [Github release page][releases] and tarballs are available there.
+project's [GitHub release page][releases] and tarballs are available there.
 
 ### Integrating
 
@@ -149,6 +148,71 @@ This may be used to identify false positives during debugging; to compile lists
 of false positives when migrating; or to gather telemetry by compiling a table
 summarizing disallowed value reports.
 
+#### `{ 'safeTypesBridge': myBridgeFn }`
+
+The bridge function defines what values are safe. It allows a framework to
+interoperate with different kinds of "safe values" like Google Closure's
+[`goog.html`][goog.html] package, the [Trusted Types polyfill][TT], or
+[node-sec-patterns][].
+
+If you are using Google's closure library, use the bridge function provided by
+`./closure-bridge.js`.
+
+```js
+goog.require('security.polymer_resin.closure_bridge');
+
+security.polymer_resin.install({
+  'safeTypesBridge': security.polymer_resin.closure_bridge.safeTypesBridge,
+  ...
+})
+```
+
+It has a contract like
+
+```js
+/**
+ * @param {*} value the value assigned which may not be safe.
+ * @param {string} type the kind of value expected.
+ *    'HTML': a string of HTML;
+ *    'JAVASCRIPT': a string of JavaScript source code;
+ *    'RESOURCE_URL': a URL that could be loaded into the current document;
+ *    'STYLE': a string of CSS,
+ *    'URL': a URL that could be loaded separately from the current document
+ *      though some protocols like "javascript:" do affect the current document;
+ *    'CONSTANT': a value known to come from the developer;
+ *    'STRING': passed to unwrap a wrapped string.
+ * @param {*} fallback returned to indicate that the bridge does not know how
+ *    to make value safe.
+ * @return {?} a value that is safe in the context identified by type or
+ *    fallback.
+ */
+function mySafeTypesBridge(value, type, fallback) {
+  ...
+}
+```
+
+The default safeTypesBridge just returns `fallback` which will prevent assigning
+most URL values.
+
+If you are implementing a safe type bridge, make sure an attacker can't forge
+trusted values.
+
+```js
+function brokenSafeTypesBridge(value, type, fallback) {
+  if (value && typeof value === 'object'
+      // DO NOT DO THIS!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+      && value.trustedType === type) {
+    return value.content;
+  }
+  return fallback;
+}
+
+// Values can be forged by controlling a string to JSON.parse
+let attack = `{ "content": "javascript:alert('evil')", "trustedType": "URL" }`;
+brokenSafeTypesBridge(JSON.parse(attack), 'URL', {})
+    === "javascript:alert('evil')";
+```
+
 ## <a name="migrating">Migrating an app or element to work with polymer-resin</a>
 
 When migrating an app to use polymer-resin, it can be helpful to get a list of
@@ -168,8 +232,8 @@ function telemetryGatheringReportHandler(
   if (isDisallowedValue) {
     var key = optContextNodeName + ' : ' + optNodeName + ' : '
             + optAttrName;
-    polymerResingDebugTelemetry[key] =
-        (polymerResingDebugTelemetry[key] || 0) + 1;
+    polymerResinDebugTelemetry[key] =
+        (polymerResinDebugTelemetry[key] || 0) + 1;
   }
 }
 
@@ -364,9 +428,6 @@ targets like JavaScript, server-side template languages, and database query
 engines.
 
 
-[README]: README.md
-
-
 [vulcanize]: http://closuretools.blogspot.com/2016/10/polymer-closure-compiler-in-gulp.html
 [goog.html]: https://github.com/google/closure-library/tree/master/closure/goog/html
 [goog.dom.safe]: https://github.com/google/closure-library/blob/master/closure/goog/dom/safe.js
@@ -382,3 +443,5 @@ engines.
 [issues]: https://github.com/Polymer/polymer-resin/issues
 [d.i.d.]: https://en.wikipedia.org/wiki/Defense_in_depth_%28computing%29
 [unchecked-conversions]: https://github.com/google/safe-html-types/blob/master/doc/safehtml-unchecked.md
+[TT]: https://github.com/WICG/trusted-types
+[node-sec-patterns]: https://www.npmjs.com/package/node-sec-patterns

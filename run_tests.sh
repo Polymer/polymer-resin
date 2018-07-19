@@ -87,6 +87,8 @@ ln "$SRC_DIR"/standalone/polymer-resin-debug.js \
   "$TEST_ROOT_DIR"/polymer-resin/polymer-resin.js
 ln "$SRC_DIR"/polymer-resin.html \
   "$TEST_ROOT_DIR"/polymer-resin/polymer-resin.html
+ln "$SRC_DIR"/standalone/closure-bridge.js \
+  "$TEST_ROOT_DIR"/polymer-resin/closure-bridge.js
 
 
 # Invoke wct

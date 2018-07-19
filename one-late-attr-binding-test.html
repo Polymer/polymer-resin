@@ -16,11 +16,16 @@ http://polymer.github.io/PATENTS.txt
 <html>
 <head>
   <meta charset="utf-8">
-  <script src="/components/webcomponentsjs/webcomponents-lite.js"></script>
+  <script>function doInstall() {
+    security.polymer_resin.install({
+      'safeTypesBridge': security.polymer_resin.closure_bridge.safeTypesBridge
+    });
+  }</script>
+    <script src="/components/webcomponentsjs/webcomponents-lite.js"></script>
   <script src="/components/web-component-tester/browser.js"></script>
   <link rel="import" href="/components/polymer/polymer.html" />
   <script src="polymer-resin.js"></script>
-  <script>security.polymer_resin.install();</script>
+  <script>doInstall();</script>
   <script src="one-late-attr-binding-test.js"></script>
   <title>One Late Attr Binding Test</title>
 </head>

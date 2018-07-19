@@ -1,0 +1,45 @@
+{
+  "name": "polymer-resin",
+  "description": "XSS mitigation for Polymer webcomponents that uses safe html type contracts",
+  "version": "1.2.8",
+  "keywords": [
+    "polymer",
+    "security",
+    "xss"
+  ],
+  "main": "polymer-resin.js",
+  "files": [
+    "*.js",
+    "polymer-resin.html",
+    "stanadlone/*",
+    "lib/**/*.js"
+  ],
+  "dependencies": {
+    "polymer": "^1.7.1",
+    "webcomponentsjs": "^0.7.24"
+  },
+  "devDependencies": {
+    "web-component-tester": "^6.0.0"
+  },
+  "scripts": {
+    "test": "./run_tests.sh",
+    "prepack": "npm test"
+  },
+  "pre-commit": [
+    "prepack"
+  ],
+  "contributors": [
+    {
+      "name": "The Polymer Authors",
+      "url": "http://polymer.github.io/AUTHORS.txt"
+    }
+  ],
+  "license": "http://polymer.github.io/LICENSE.txt",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Polymer/polymer-resin.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Polymer/polymer-resin/issues"
+  }
+}

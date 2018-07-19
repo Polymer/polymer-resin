@@ -25,14 +25,9 @@
 goog.provide('security.polymer_resin');
 
 goog.require('goog.dom.NodeType');
-goog.require('goog.html.SafeHtml');
-goog.require('goog.html.SafeScript');
 goog.require('goog.html.SafeStyle');
 goog.require('goog.html.SafeUrl');
-goog.require('goog.html.TrustedResourceUrl');
 goog.require('goog.string');
-goog.require('goog.string.Const');
-goog.require('goog.string.TypedString');
 goog.require('security.html.contracts');
 goog.require('security.html.namealiases');
 goog.require('security.polymer_resin.CustomElementClassification');
@@ -50,7 +45,7 @@ goog.define('security.polymer_resin.STANDALONE', false);
  *
  * <hr>
  *
- * When {@code UNSAFE_passThruDisallowedValues} is {@code true},
+ * When `UNSAFE_passThruDisallowedValues` is `true`,
  * disallowed values will not be replaced so may reach
  * unsafe browser sinks resulting in a security vulnerability.
  * <p>
@@ -69,21 +64,21 @@ goog.define('security.polymer_resin.STANDALONE', false);
  *
  * <hr>
  *
- * {@code allowedIdentifierPrefixes} specifies prefixes for allowed values
+ * `allowedIdentifierPrefixes` specifies prefixes for allowed values
  * for attributes with type IDENTIFIER.
  * <p>
  * By default, only the empty identifier is allowed.
  *
  * <hr>
  *
- * {@code reportHandler} is a callback that receives reports about rejected
+ * `reportHandler` is a callback that receives reports about rejected
  * values and module status
  * <p>
- * By default, if {@code goog.DEBUG} is false at init time, reportHandler is
- * never called, and if {@code goog.DEBUG} is true at init time, reportHandler
+ * By default, if `goog.DEBUG` is false at init time, reportHandler is
+ * never called, and if `goog.DEBUG` is true at init time, reportHandler
  * logs to the JS developer console.
  * <p>
- * Assuming it is enabled, either via {@code goog.DEBUG} or an explicit call to
+ * Assuming it is enabled, either via `goog.DEBUG` or an explicit call to
  * this setter, then it is called on every rejected value, and on major events
  * like module initialization.
  * <p>
@@ -94,10 +89,49 @@ goog.define('security.polymer_resin.STANDALONE', false);
  * @typedef {{
  *   'UNSAFE_passThruDisallowedValues': (?boolean | undefined),
  *   'allowedIdentifierPrefixes': (?Array.<string> | undefined),
+ *   'safeTypesBridge': (?security.polymer_resin.SafeTypesBridge | undefined),
  *   'reportHandler': (security.polymer_resin.ReportHandler | undefined)
  * }}
  */
 security.polymer_resin.Configuration;
+
+
+/**
+ * Identifiers used for safe strings interop.
+ *
+ * @enum {string}
+ */
+security.polymer_resin.SafeType = {
+  CONSTANT: 'CONSTANT',
+  HTML: 'HTML',
+  JAVASCRIPT: 'JAVASCRIPT',
+  RESOURCE_URL: 'RESOURCE_URL',
+  /** Unprivileged but possibly wrapped string. */
+  STRING: 'STRING',
+  STYLE: 'STYLE',
+  URL: 'URL'
+};
+
+
+/**
+ * A function that bridges to safe type libraries.
+ *
+ * <p>
+ * It takes three arguments:
+ * <ol>
+ *   <li>value - The value that has been offered as appropriate in context.</li>
+ *   <li>type - Identifies the kind of string that is appropriate.</li>
+ *   <li>fallback - Returned if bridge can't find a safe variant of value.</li>
+ * </ol>
+ *
+ * <p>
+ * It MUST return fallback if it cannot find a safe value.
+ * Rather than substitute a safe constant if value cannot be made safe, it SHOULD
+ * return fallback so that the caller can distinguish and log policy violations.
+ *
+ * @typedef {function(*, security.polymer_resin.SafeType, *): ?}
+ */
+security.polymer_resin.SafeTypesBridge;
 
 
 /**
@@ -108,8 +142,7 @@ security.polymer_resin.Configuration;
  * If isDisallowedValue is true then the args have the printArgs have the form
  * [contextNodeName, nodeName, attributeOrPropertyName, disallowedValue].
  * <p>
- * The context node is the element being manipulated, or if nodeName is
- * {@code "#text"},
+ * The context node is the element being manipulated, or if nodeName is "#text",
  * then contextNode is the parent of the text node being manipulated, so
  * the contextNode should always be an element or document fragment.
  * In that case, attributeOrPropertyName can be ignored.
@@ -124,11 +157,10 @@ security.polymer_resin.ReportHandler;
 /**
  * Maps Safe HTML types to handlers.
  *
- * @typedef {!{
+ * @typedef {{
  *   filter:          ?function(string, string, string):string,
  *   safeReplacement: ?string,
- *   typeToUnwrap:    ?Function,
- *   unwrap:          ?function(?):string
+ *   safeType:        ?security.polymer_resin.SafeType
  * }}
  */
 security.polymer_resin.ValueHandler;
@@ -223,6 +255,18 @@ security.polymer_resin.setReportHandler_ = function (reportHandler) {
 };
 
 /**
+ * Sets a callback used to check whether a value is a priori safe
+ * in a particular context or to coerce to one that is.
+ *
+ * @param {?security.polymer_resin.SafeTypesBridge} safeTypesBridge
+ * @private
+ */
+security.polymer_resin.setSafeTypesBridge_ = function (safeTypesBridge) {
+  security.polymer_resin.safeTypesBridge_ =
+      safeTypesBridge || security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_;
+};
+
+/**
  * @type {!RegExp}
  * @private
  */
@@ -251,6 +295,27 @@ security.polymer_resin.reportHandler_ = undefined;
 
 
 /**
+ * @type {!security.polymer_resin.SafeTypesBridge}
+ * @private
+ * @const
+ */
+security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_ =
+    function (value, type, fallback) {
+      return fallback;
+    };
+
+
+/**
+ * See setter above.
+ *
+ * @type {!security.polymer_resin.SafeTypesBridge}
+ * @private
+ */
+security.polymer_resin.safeTypesBridge_ =
+    security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_;
+
+
+/**
  * Start polymer resin.
  * This must be done before the first application element is instantiated
  * (see getting-started.md for details).
@@ -266,6 +331,7 @@ security.polymer_resin.install = function (opt_config) {
     var configAllowedIdentifierPrefixes =
         opt_config['allowedIdentifierPrefixes'];
     var configReportHandler = opt_config['reportHandler'];
+    var safeTypesBridge = opt_config['safeTypesBridge'];
 
     if (configUnsafePassThruDisallowedValues != null) {
       security.polymer_resin.UNSAFE_passThruDisallowedValues_(
@@ -281,6 +347,10 @@ security.polymer_resin.install = function (opt_config) {
 
     if (configReportHandler !== undefined) {
       security.polymer_resin.setReportHandler_(configReportHandler);
+    }
+
+    if (safeTypesBridge !== undefined) {
+      security.polymer_resin.setSafeTypesBridge_(safeTypesBridge);
     }
   }
 
@@ -326,6 +396,12 @@ security.polymer_resin.install = function (opt_config) {
    * @type {!Element}
    */
   var VANILLA_HTML_ELEMENT_ = document.createElement('polyresinuncustomized');
+
+  /**
+   * An opaque token used to indicate that unwrapping a safe value failed.
+   * @const
+   */
+  var DID_NOT_UNWRAP = {};
 
   /**
    * @param {!Element} element
@@ -387,6 +463,8 @@ security.polymer_resin.install = function (opt_config) {
       return value;
     }
 
+    var safeTypesBridge = security.polymer_resin.safeTypesBridge_;
+
     var nodeType = node.nodeType;
     if (nodeType !== goog.dom.NodeType.ELEMENT) {
       // TODO: does polymer use CDATA sections?
@@ -406,7 +484,7 @@ security.polymer_resin.install = function (opt_config) {
             case security.polymer_resin.CustomElementClassification.LEGACY:
               var contentType = security.html.contracts.contentTypeForElement(
                   parentElementName);
-              // TODO(user): treat STRING_RCDATA differently from SAFE_HTML
+              // TODO(samueltan): treat STRING_RCDATA differently from SAFE_HTML
               // (b/62487356).
               allowText = contentType
                   === security.html.contracts.ElementContentType.SAFE_HTML ||
@@ -421,11 +499,8 @@ security.polymer_resin.install = function (opt_config) {
           }
         }
         if (allowText) {
-          return (
-              !!(value && value.implementsGoogStringTypedString)
-              ? (/** @type {!goog.string.TypedString} */(value))
-                .getTypedStringValue()
-              : String(value));
+          return '' + safeTypesBridge(
+              value, security.polymer_resin.SafeType.STRING, value);
         }
       }
 
@@ -490,34 +565,32 @@ security.polymer_resin.install = function (opt_config) {
     /** @type {?security.html.contracts.AttrType} */
     var attrType = security.html.contracts.typeOfAttribute(
         elementName, attrName, goog.bind(getAttributeValue, element));
-    /** @type {string} */
-    var safeValue = security.polymer_resin.INNOCUOUS_STRING_;
+    var safeValue = DID_NOT_UNWRAP;
+    var safeReplacement = null;
     if (attrType != null) {
       /** @type {!security.polymer_resin.ValueHandler} */
       var valueHandler = security.polymer_resin.VALUE_HANDLERS_[attrType];
-      if (valueHandler.typeToUnwrap
-          && value instanceof valueHandler.typeToUnwrap) {
-        return valueHandler.unwrap(value);
-      }
-      var stringValue =
-          !!(value && value.implementsGoogStringTypedString)
-          ? (/** @type {!goog.string.TypedString} */(value))
-            .getTypedStringValue()
-          : String(value);
-      safeValue =
-          valueHandler.filter
-          ? valueHandler.filter(elementName, attrName, stringValue)
-          : stringValue;
-      if (safeValue !== valueHandler.safeReplacement) {
-        return safeValue;
-      }
-    }
-    if (security.polymer_resin.reportHandler_) {
-      security.polymer_resin.reportHandler_(
-          true, 'Failed to sanitize attribute of <%s>: <%s %s="%O">',
-          elementName, elementName, attrName, value);
-    }
+      var safeType = valueHandler.safeType;
+      safeReplacement = valueHandler.safeReplacement;
 
+      if (safeType) {
+        safeValue = safeTypesBridge(value, safeType, DID_NOT_UNWRAP);
+      }
+      if (safeValue === DID_NOT_UNWRAP && valueHandler.filter) {
+        // Treat as a special case.
+        var stringValue = '' + safeTypesBridge(  // Unwrap as a string.
+            value, security.polymer_resin.SafeType.STRING, value);
+        safeValue = valueHandler.filter(elementName, attrName, stringValue);
+      }
+    }
+    if (safeValue === DID_NOT_UNWRAP) {
+      safeValue = safeReplacement || security.polymer_resin.INNOCUOUS_STRING_;
+      if (security.polymer_resin.reportHandler_) {
+        security.polymer_resin.reportHandler_(
+            true, 'Failed to sanitize attribute of <%s>: <%s %s="%O">',
+            elementName, elementName, attrName, value);
+      }
+    }
     return safeValue;
   }
 
@@ -571,29 +644,40 @@ security.polymer_resin.install = function (opt_config) {
           'Cannot replace _computeFinalAnnotationValue.  Is Polymer frozen?');
     }
   } else {
-    var origSanitize = Polymer.sanitizeDOMValue;
+    var origSanitize = Polymer.sanitizeDOMValue || (
+        Polymer.Settings && Polymer.Settings.sanitizeDOMValue);
     var sanitizeDOMValue =
-        function sanitizeDOMValue(value, name, type, node) {
+        /**
+         * @param {*} value
+         * @param {string} name
+         * @param {string} type
+         * @param {!Node|null} node
+         * @return {*}
+         */
+       function sanitizeDOMValue(value, name, type, node) {
           var origSanitizedValue = origSanitize
               ? origSanitize.call(Polymer, value, name, type, node)
               : value;
-          var safeValue = sanitize(node, name, type, origSanitizedValue);
-
+          var safeValue = node
+              ? sanitize(node, name, type, origSanitizedValue)
+              : security.polymer_resin.INNOCUOUS_STRING_;
           return (
               security.polymer_resin.allowUnsafeValues_
               ? origSanitizedValue : safeValue);
         };
-    Polymer.sanitizeDOMValue = sanitizeDOMValue;
-    if (Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
-      // We're in use strict, so assignment should fail-fast, but
-      // this is cheap.
-      throw new Error(
-          'Cannot install sanitizeDOMValue.  Is Polymer frozen?');
+    if (Polymer.Settings && Polymer.Settings.setSanitizeDOMValue) {
+      Polymer.Settings.setSanitizeDOMValue(sanitizeDOMValue);
+    } else {
+      Polymer.sanitizeDOMValue = sanitizeDOMValue;
+      if (Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
+        // We're in use strict, so assignment should fail-fast, but
+        // this is cheap.
+        throw new Error(
+            'Cannot install sanitizeDOMValue.  Is Polymer frozen?');
+      }
     }
   }
 };
-
-
 /**
  * Analogous to goog.html.SafeUrl.INNOCUOUS_STRING but
  * used for const strings and safe html types that
@@ -617,110 +701,42 @@ security.polymer_resin.INNOCUOUS_SCRIPT_ = ' /*zClosurez*/ ';
 security.polymer_resin.VALUE_HANDLERS_ = [];
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.NONE] = {
-  // A function that maps values to safe values or that
-  // returns a safe replacement value.
-  filter: null,
+  filter: function (e, a, v) { return v; },
   // A safe value that indicates a problem likely occurred
   // so an event is worth logging.
   safeReplacement: null,
-  // Constructor for a subtype of TypedString to unwrap
-  typeToUnwrap: null,
-  // Unwraps values that are instanceof typeToUnwrap
-  unwrap: null
+  // A safe types interop identifier.
+  safeType: null
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.SAFE_HTML] = {
-  // Assigning a string to srchtml is the same as
-  // assigning a text node.
-  filter: (
-      /**
-       * Converts plain text to HTML that parses to a text node with
-       * equivalent content.
-       *
-       * @param {string} e element name
-       * @param {string} a attribute name
-       * @param {string} v attribute value
-       * @return {string}
-       */
-      function plainTextToHtml(e, a, v) {
-        return goog.string.htmlEscape(v);
-      }),
+  filter: null,
   safeReplacement: null,
-  typeToUnwrap: goog.html.SafeHtml,
-  unwrap: goog.html.SafeHtml.unwrap
+  safeType: security.polymer_resin.SafeType.HTML
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.SAFE_URL] = {
-  filter: (
-      /**
-       * Allows safe URLs through, but rejects unsafe ones.
-       * @param {string} e element name
-       * @param {string} a attribute name
-       * @param {string} v attribute value
-       * @return {string}
-       */
-      function allowSafeUrl(e, a, v) {
-        // TODO: Can we do without creating a SafeUrl instance?
-        return goog.html.SafeUrl.sanitize(v).getTypedStringValue();
-      }),
+  filter: null,
   safeReplacement: goog.html.SafeUrl.INNOCUOUS_STRING,
-  typeToUnwrap: goog.html.SafeUrl,
-  unwrap: goog.html.SafeUrl.unwrap
+  safeType: security.polymer_resin.SafeType.URL
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {
-  filter: (
-      /**
-       * Just returns the safe replacement value because we have no
-       * way of declaring that a raw string is a trusted resource so
-       * rely on RTTI in all cases.
-       * @param {string} e element name
-       * @param {string} a attribute name
-       * @param {string} v attribute value
-       * @return {string}
-       */
-      function disallowTrustedResourceUrl(e, a, v) {
-        return goog.html.SafeUrl.INNOCUOUS_STRING;
-      }),
+  filter: null,
   safeReplacement: goog.html.SafeUrl.INNOCUOUS_STRING,
-  typeToUnwrap: goog.html.TrustedResourceUrl,
-  unwrap: goog.html.TrustedResourceUrl.unwrap
+  safeType: security.polymer_resin.SafeType.RESOURCE_URL
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.SAFE_STYLE] = {
-  filter: (
-      /**
-       * Just returns the safe replacement value since we have no
-       * way of testing that a raw string is a safe style.
-       * @param {string} e element name
-       * @param {string} a attribute name
-       * @param {string} v attribute value
-       * @return {string}
-       */
-      function disallowSafeStyle(e, a, v) {
-        return goog.html.SafeStyle.INNOCUOUS_STRING;
-      }),
+  filter: null,
   safeReplacement: goog.html.SafeStyle.INNOCUOUS_STRING,
-  typeToUnwrap: goog.html.SafeStyle,
-  unwrap: goog.html.SafeStyle.unwrap
+  safeType: security.polymer_resin.SafeType.STYLE
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.SAFE_SCRIPT] = {
-  filter: (
-      /**
-       * Just returns the safe replacement value since we have no
-       * way of testing that a raw string is a safe script.
-       * @param {string} e element name
-       * @param {string} a attribute name
-       * @param {string} v attribute value
-       * @return {string}
-       */
-      function disallowSafeScript(e, a, v) {
-        return security.polymer_resin.INNOCUOUS_SCRIPT_;
-      }),
+  filter: null,
   safeReplacement: security.polymer_resin.INNOCUOUS_SCRIPT_,
-  typeToUnwrap: goog.html.SafeScript,
-  unwrap: goog.html.SafeScript.unwrap
+  safeType: security.polymer_resin.SafeType.JAVASCRIPT
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.ENUM] = {
@@ -740,25 +756,13 @@ security.polymer_resin.VALUE_HANDLERS_[
             ? lv : security.polymer_resin.INNOCUOUS_STRING_;
       }),
   safeReplacement: security.polymer_resin.INNOCUOUS_STRING_,
-  typeToUnwrap: null,
-  unwrap: null
+  safeType: null
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {
-  filter: (
-      /**
-       * Just returns the safe replacement value.
-       * @param {string} e element name
-       * @param {string} a attribute name
-       * @param {string} v attribute value
-       * @return {string}
-       */
-      function disallow(e, a, v) {
-        return security.polymer_resin.INNOCUOUS_SCRIPT_;
-      }),
+  filter: null,
   safeReplacement: security.polymer_resin.INNOCUOUS_STRING_,
-  typeToUnwrap: goog.string.Const,
-  unwrap: goog.string.Const.unwrap
+  safeType: security.polymer_resin.SafeType.CONSTANT
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.IDENTIFIER] = {
@@ -775,11 +779,8 @@ security.polymer_resin.VALUE_HANDLERS_[
             : security.polymer_resin.INNOCUOUS_STRING_;
       }),
   safeReplacement: security.polymer_resin.INNOCUOUS_STRING_,
-  typeToUnwrap: goog.string.Const,
-  unwrap: goog.string.Const.unwrap
+  safeType: security.polymer_resin.SafeType.CONSTANT
 };
-
-
 if (security.polymer_resin.STANDALONE) {
   goog.exportSymbol(
       'security.polymer_resin.install',

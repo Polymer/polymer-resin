@@ -177,10 +177,10 @@ security.polymer_resin.classifyElement = function (name, ctor) {
           === security.polymer_resin.docRegisteredElements_)) {
     return security.polymer_resin.CustomElementClassification.CUSTOM;
   }
-  if (ctor === HTMLUnknownElement) {
+  if (ctor.name === 'HTMLUnknownElement') {
     return security.polymer_resin.CustomElementClassification.LEGACY;
   }
-  if (ctor === HTMLElement
+  if (ctor.name === 'HTMLElement'
       && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name)) {
     return security.polymer_resin.CustomElementClassification.CUSTOMIZABLE;
   }

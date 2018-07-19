@@ -3,44 +3,16 @@
 
 XSS mitigation for Polymer webcomponents.
 
-----
+--------------------------------------------------------------------------------
 
-This document explains **what** polymer-resin is.  See
-["Getting Started"][getting-started] if you're interested in **how**
-to use it.
+This document explains **what** polymer-resin is. See ["Getting
+Started"][getting-started] if you're interested in **how** to use it.
 
-----
+--------------------------------------------------------------------------------
 
 Relevant Concepts & Specs
 
-*   [Webcomponents][webcomponents]
-*   [Auto-sanitization][autosan]
-*   [Safe HTML Types][safe-html-types]
-
-Relevant Code
-
-*   [PolyGerrit UI on GoogleSource][polygerrit-ui]
-*   Polymer value hooks ([V1][poly-v1], [V2][poly-v2])
-*   JavaScript [Safe HTML APIs][safe-html-types-js]
-
-## Background
-
-Gerrit is a code review tool that may be used by Bets to manage their codebases.
-Polygerrit-UI is a rewrite of the Gerrit UI using Polymer instead of Closure
-Templates.
-
-Vulnerabilities in code review tools affects the integrity of the codebase -- an
-XSS (Cross-site scripting) attack that can submit a form in a code review tool
-can send spurious approvals; and (depending on the level of integration with
-revision control) suggest edits, commit approved changes, and kick off test runs
-and other processes with edited files as inputs.
-
-In most template languages, one defines templates, but in Polymer one defines
-custom elements. This means that there is not a closed class of HTML elements
-and attributes about which we can reason as there is for [Closure Templates
-auto-sanitizer][soy-sec].
-
-
+*   
 ## Goal
 
 Make it easy for security auditors to quickly check whether a project's custom
@@ -79,8 +51,8 @@ For Polymer, we assume that
 
     A builtin sink is a property or attribute that can be set by user code and
     is handled specially by the browser in a manner that may have security
-    implications, in particular, attacker-controlled script execution.
-    Builtin sinks tend to correspond to IDL attributes that are annotated with
+    implications, in particular, attacker-controlled script execution. Builtin
+    sinks tend to correspond to IDL attributes that are annotated with
     [*Reflect*][idl-reflect],
     [*CustomElementCallbacks*][idl-custom-element-callbacks], or
     [*CEReactions*][idl-cereactions].
@@ -88,12 +60,11 @@ For Polymer, we assume that
     There is a hazard whenever an *unchecked value* reaches a builtin sink. An
     unchecked value is one that could be controlled by an attacker; it might
     originate from outside an [origin][same-origin] controlled by the
-    application author.
-    For instance, the `href` attribute of an *HTMLAnchorElement* is a
-    security-relevant sink; if it can be reached by a value entirely under an
-    attacker's control, that attacker can execute arbitrary script in the
-    context of the user's browser session through injection of a `javascript:`
-    URL.
+    application author. For instance, the `href` attribute of an
+    *HTMLAnchorElement* is a security-relevant sink; if it can be reached by a
+    value entirely under an attacker's control, that attacker can execute
+    arbitrary script in the context of the user's browser session through
+    injection of a `javascript:` URL.
 
     There are many ways that JavaScript can manipulate builtin sinks, and we
     will use [JSConformance][jsconf] policies to guide developers towards safe
@@ -167,123 +138,6 @@ after;
 Polymer denormalizes the DOM so that "`before;`", "`[[interpolation]]`" and
 "`after;`" are three different text nodes, and control reaches the sanitizer
 with a *TextNode* as the node, and a *null* property name.
-
-We use this to intercept text interpolation and allow it only when the
-content is human-readable HTML.
-
-
-## Life of a Polymer+Resin page
-
-Normally, when an HTML page is parsed, the browser knows that, for an `<A>`
-element, it creates an *HTMLAElement* instance. The [custom elements draft
-specification](https://www.w3.org/TR/custom-elements/) explicitly allows parsing
-of `<my-custom>` before the JavaScript that will eventually define and register
-*HTMLMyCustomElement*.
-
-<a name="custom-element-example"></a>
-
-```html
-<head>
-<script src="webcomponents-lite.js"></script>
-<link rel="import" href="custom-element.html">
-<body>
-<custom-element id="app"></custom-element>
-```
-
-The life-cycle of a polymer app often looks like
-
-1.  Synchronously load *webcomponents-lite.js*
-2.  Start parsing HTML imported page *custom-element.html*
-3.  Indirectly HTML import load *polymer.html* which provides a framework for
-    custom elements and has the hooks we need to intercept bound data values.
-4.  Finish processing *custom-element.html* which registers the custom element
-    definition.
-5.  Instantiate `<custom-element>`
-
-```js
-window.addEventListener('WebComponentsReady', …)
-```
-
-seems like it might run at the right time, and the `'HTMLImportsLoaded'` event
-is another good candidate.
-
-Both run after the HTML element definitions have been loaded, and before the app
-has been provisioned with state loaded from the server, but state that is
-initialized based on location or query parameters will already have reached
-custom elements, meaning [reflected XSS][reflected-xss] is still possible.
-
-To prevent reflected XSS, we need to initialize after Polymer is loaded, and
-before the first custom element definition is registered (except for those
-defined by Polymer internally).
-
---------------------------------------------------------------------------------
-
-`polygerrit-ui/app/index.html` is a good example of a polymer app. The column on
-the left shows the app before resin is added, and the column on the right shows
-how we want it to work with Resin. Note that *polymer.html* is not explicitly
-loaded by the *index.html* page; it's loaded via a transitive HTML import.
-
-Without Resin                  | With Resin
------------------------------- | -------------------------------------
-Enter `<html><head>`           | ditto
-Load *webcomponents-lite.js*   | ditto
-                               | HTML import *polymer.html*
-                               | Load and configure *polymer-resin.js*
-Preload `<gr-app>` definition  | ditto
-HTML import *polymer.html*     |
-Load other element definitions | ditto
-Instantiate `<gr-app>` element | ditto
-
---------------------------------------------------------------------------------
-
-We provide a *polymer-resin.html*, an importable HTML file that does two things.
-
-1.  HTML import *polymer.html* so that we have a place to install the hooks
-2.  synchronously load a script to install the hooks
-
-## Bound data handler
-
-The handler receives
-
-1.  node - A DOM element
-2.  property - the property or attribute name
-3.  info.type (polymer v1) or type (polymer v2) - one of "attribute" or
-    "property"
-4.  value - the untrusted value
-
-and returns a safe value.
-
-## Sanitize DOM Value Algorithm
-
-When sanitizing a property or attribute value we
-
-1.  Allow all falsey values. This allows resetting, initializing to
-    blank/nullish. This has the side effect of also allowing `0`, `NaN`, `false`
-    which we deem low-risk.
-2.  Classify the containing element as customized or not-customized.
-3.  Find a clean (no non-default attributes or JS muckery) proxy for the
-    element.
-    *   For custom elements, this is a vanilla *HTMLElement* instance.
-    *   For a builtin or customized-builtin element, it is a vanilla
-        `document.createElement(builtinElementName)`.
-    *   For legacy elements, treat as builtins.
-    *   For customizable elements (those which meet the naming convention but
-        for which no custom element constructor has yet been registered), treat
-        as a custom element. Our analysis is dynamic, so we need not assume the
-        worst.
-4.  If the proxy does not have the named property in it, then allow any value
-    without unwrapping or checking typed string values.
-5.  Otherwise, if the value is whitelisted according to the element/attribute
-    curated contract tables (JS namespace `security.html.contracts`), then
-    unwrap any typed string values and allow.
-6.  Otherwise, log as appropriate, and return a known-safe value.
-
-We could break from the loop if the prototype has an own property with the given
-name. We could memoize the fact that we found a result with the original key if
-we’re willing to assume that no properties are deleted from prototypes during
-program execution.
-
-## Table of Security-Relevant Properties and Attributes
 
 
 The `security.html.contracts` module captures builtin HTML element and attribute
@@ -382,40 +236,16 @@ to
 <link rel="import" href="polymer-resin/polymer-resin.html">
 <script>
 // This step is essential to the security of this project.
-security.polymer_resin.install();
+security.polymer_resin.install({ /* config */ });
 </script>
 <link rel="import" href="custom-element.html">
 ```
 
 or with one of the standalone variants above. The `<script>` is required because
-it forces the imports above it to be handled before that of
-*custom-element.html*. The exact text is unimportant but it must be non-empty.
+it forces the imports above it to be handled before *custom-element.html*. The
+<tt>install</tt> call is explained in [configuring][].
 
 ## Running tests from the command line
-
-Per https://github.com/Polymer/web-component-tester
-make sure that you have bower installed and have run `bower update`.
-Then use the test script.
-
-```bash
-$ ./run_tests.sh
-```
-
-# Running tests in the browser
-
-From the project root
-
-```bash
-$ ./run_tests.sh -p -l chrome
-```
-
-causes it to keep the server open.
-See the log output for the localhost URL to browse to.
-
-
-[getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#getting-started
-
-
 
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary
