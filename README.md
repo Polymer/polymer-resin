@@ -139,6 +139,123 @@ Polymer denormalizes the DOM so that "`before;`", "`[[interpolation]]`" and
 "`after;`" are three different text nodes, and control reaches the sanitizer
 with a *TextNode* as the node, and a *null* property name.
 
+We use this to intercept text interpolation and allow it only when the
+content is human-readable HTML.
+
+
+## Life of a Polymer+Resin page
+
+Normally, when an HTML page is parsed, the browser knows that, for an `<A>`
+element, it creates an *HTMLAElement* instance. The [custom elements draft
+specification](https://www.w3.org/TR/custom-elements/) explicitly allows parsing
+of `<my-custom>` before the JavaScript that will eventually define and register
+*HTMLMyCustomElement*.
+
+<a name="custom-element-example"></a>
+
+```html
+<head>
+<script src="webcomponents-lite.js"></script>
+<link rel="import" href="custom-element.html">
+<body>
+<custom-element id="app"></custom-element>
+```
+
+The life-cycle of a polymer app often looks like
+
+1.  Synchronously load *webcomponents-lite.js*
+2.  Start parsing HTML imported page *custom-element.html*
+3.  Indirectly HTML import load *polymer.html* which provides a framework for
+    custom elements and has the hooks we need to intercept bound data values.
+4.  Finish processing *custom-element.html* which registers the custom element
+    definition.
+5.  Instantiate `<custom-element>`
+
+```js
+window.addEventListener('WebComponentsReady', …)
+```
+
+seems like it might run at the right time, and the `'HTMLImportsLoaded'` event
+is another good candidate.
+
+Both run after the HTML element definitions have been loaded, and before the app
+has been provisioned with state loaded from the server, but state that is
+initialized based on location or query parameters will already have reached
+custom elements, meaning [reflected XSS][reflected-xss] is still possible.
+
+To prevent reflected XSS, we need to initialize after Polymer is loaded, and
+before the first custom element definition is registered (except for those
+defined by Polymer internally).
+
+--------------------------------------------------------------------------------
+
+`polygerrit-ui/app/index.html` is a good example of a polymer app. The column on
+the left shows the app before resin is added, and the column on the right shows
+how we want it to work with Resin. Note that *polymer.html* is not explicitly
+loaded by the *index.html* page; it's loaded via a transitive HTML import.
+
+Without Resin                  | With Resin
+------------------------------ | -------------------------------------
+Enter `<html><head>`           | ditto
+Load *webcomponents-lite.js*   | ditto
+                               | HTML import *polymer.html*
+                               | Load and configure *polymer-resin.js*
+Preload `<gr-app>` definition  | ditto
+HTML import *polymer.html*     |
+Load other element definitions | ditto
+Instantiate `<gr-app>` element | ditto
+
+--------------------------------------------------------------------------------
+
+We provide a *polymer-resin.html*, an importable HTML file that does two things.
+
+1.  HTML import *polymer.html* so that we have a place to install the hooks
+2.  synchronously load a script to install the hooks
+
+## Bound data handler
+
+The handler receives
+
+1.  node - A DOM element
+2.  property - the property or attribute name
+3.  info.type (polymer v1) or type (polymer v2) - one of "attribute" or
+    "property"
+4.  value - the untrusted value
+
+and returns a safe value.
+
+## Sanitize DOM Value Algorithm
+
+When sanitizing a property or attribute value we
+
+1.  Allow all falsey values. This allows resetting, initializing to
+    blank/nullish. This has the side effect of also allowing `0`, `NaN`, `false`
+    which we deem low-risk.
+2.  Classify the containing element as customized or not-customized.
+3.  Find a clean (no non-default attributes or JS muckery) proxy for the
+    element.
+    *   For custom elements, this is a vanilla *HTMLElement* instance.
+    *   For a builtin or customized-builtin element, it is a vanilla
+        `document.createElement(builtinElementName)`.
+    *   For legacy elements, treat as builtins.
+    *   For customizable elements (those which meet the naming convention but
+        for which no custom element constructor has yet been registered), treat
+        as a custom element. Our analysis is dynamic, so we need not assume the
+        worst.
+4.  If the proxy does not have the named property in it, then allow any value
+    without unwrapping or checking typed string values.
+5.  Otherwise, if the value is whitelisted according to the element/attribute
+    curated contract tables (JS namespace `security.html.contracts`), then
+    unwrap any typed string values and allow.
+6.  Otherwise, log as appropriate, and return a known-safe value.
+
+We could break from the loop if the prototype has an own property with the given
+name. We could memoize the fact that we found a result with the original key if
+we’re willing to assume that no properties are deleted from prototypes during
+program execution.
+
+## Table of Security-Relevant Properties and Attributes
+
 
 The `security.html.contracts` module captures builtin HTML element and attribute
 relationships, and we apply the following filters.
@@ -246,6 +363,28 @@ it forces the imports above it to be handled before *custom-element.html*. The
 <tt>install</tt> call is explained in [configuring][].
 
 ## Running tests from the command line
+
+
+Per https://github.com/Polymer/web-component-tester
+make sure that you have bower installed and have run `bower update`.
+Then use the test script.
+
+```bash
+$ ./run_tests.sh
+```
+
+# Running tests in the browser
+
+From the project root
+
+```bash
+$ ./run_tests.sh -p -l chrome
+```
+
+causes it to keep the server open.
+See the log output for the localhost URL to browse to.
+
+
 
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary

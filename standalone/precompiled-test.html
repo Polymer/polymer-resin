@@ -1,0 +1,53 @@
+<!--
+@license
+Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+This code may only be used under the BSD style license found at
+http://polymer.github.io/LICENSE.txt
+The complete set of authors may be found at
+http://polymer.github.io/AUTHORS.txt
+The complete set of contributors may be found at
+http://polymer.github.io/CONTRIBUTORS.txt
+Code distributed by Google as part of the polymer project is also
+subject to an additional IP rights grant found at
+http://polymer.github.io/PATENTS.txt
+-->
+
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8">
+    <script src="/components/webcomponentsjs/webcomponents-lite.js"></script>
+    <script src="/components/web-component-tester/browser.js"></script>
+    <link rel="import" href="/components/polymer/polymer.html" />
+    <script src="polymer-resin.js"></script>
+    <script>
+      security.polymer_resin.install(
+          {
+            reportHandler: security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER
+          });
+    </script>
+    <script src="precompiled-test.js"></script>
+    <title>Precompiled Test</title>
+  </head>
+  <body>
+    <dom-module id="my-test-element">
+      <template>
+        <a href$="{{x}}">Link</a>
+      </template>
+      <script>
+        Polymer({
+          is: 'my-test-element',
+          properties: {
+            x: String
+          }
+        });
+      </script>
+    </dom-module>
+
+    <test-fixture id="precompiled-test-fixture">
+      <template>
+        <my-test-element></my-test-element>
+      </template>
+    </test-fixture>
+  </body>
+</html>
