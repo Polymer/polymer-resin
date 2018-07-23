@@ -781,6 +781,8 @@ security.polymer_resin.VALUE_HANDLERS_[
   safeReplacement: security.polymer_resin.INNOCUOUS_STRING_,
   safeType: security.polymer_resin.SafeType.CONSTANT
 };
+
+
 if (security.polymer_resin.STANDALONE) {
   goog.exportSymbol(
       'security.polymer_resin.install',

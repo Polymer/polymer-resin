@@ -428,6 +428,9 @@ targets like JavaScript, server-side template languages, and database query
 engines.
 
 
+[README]: README.md
+
+
 [vulcanize]: http://closuretools.blogspot.com/2016/10/polymer-closure-compiler-in-gulp.html
 [goog.html]: https://github.com/google/closure-library/tree/master/closure/goog/html
 [goog.dom.safe]: https://github.com/google/closure-library/blob/master/closure/goog/dom/safe.js

@@ -12,7 +12,34 @@ Started"][getting-started] if you're interested in **how** to use it.
 
 Relevant Concepts & Specs
 
-*   
+*   [Webcomponents][webcomponents]
+*   [Auto-sanitization][autosan]
+*   [Safe HTML Types][safe-html-types]
+
+Relevant Code
+
+*   [PolyGerrit UI on GoogleSource][polygerrit-ui]
+*   Polymer value hooks ([V1][poly-v1], [V2][poly-v2])
+*   JavaScript [Safe HTML APIs][safe-html-types-js]
+
+## Background
+
+Gerrit is a code review tool that may be used by Bets to manage their codebases.
+Polygerrit-UI is a rewrite of the Gerrit UI using Polymer instead of Closure
+Templates.
+
+Vulnerabilities in code review tools affects the integrity of the codebase -- an
+XSS (Cross-site scripting) attack that can submit a form in a code review tool
+can send spurious approvals; and (depending on the level of integration with
+revision control) suggest edits, commit approved changes, and kick off test runs
+and other processes with edited files as inputs.
+
+In most template languages, one defines templates, but in Polymer one defines
+custom elements. This means that there is not a closed class of HTML elements
+and attributes about which we can reason as there is for [Closure Templates
+auto-sanitizer][soy-sec].
+
+
 ## Goal
 
 Make it easy for security auditors to quickly check whether a project's custom
@@ -385,6 +412,10 @@ causes it to keep the server open.
 See the log output for the localhost URL to browse to.
 
 
+
+
+[getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#getting-started
+[configuring]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#configuring
 
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary

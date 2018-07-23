@@ -145,6 +145,7 @@ security.polymer_resin.closure_bridge.FILTERS_ = {
         return goog.html.SafeUrl.sanitize(value).getTypedStringValue();
       })
 };
+
 /**
  * A security.polymer_resin.SafeTypeBridge.
  *
