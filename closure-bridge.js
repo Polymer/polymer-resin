@@ -34,6 +34,12 @@ goog.require('goog.string.TypedString');
 
 
 /**
+ * @define {boolean} whether bundled with its dependencies while
+ *     exporting its public API.
+ */
+goog.define('security.polymer_resin.closure_bridge.STANDALONE', false);
+
+/**
  * @typedef {{typeToUnwrap: !Function, unwrap: !Function}}
  */
 security.polymer_resin.closure_bridge.unwrapper;
@@ -171,3 +177,9 @@ security.polymer_resin.closure_bridge.safeTypesBridge =
           '' + security.polymer_resin.closure_bridge.unwrapString_(value),
           fallback);
     };
+
+if (security.polymer_resin.closure_bridge.STANDALONE) {
+  goog.exportSymbol(
+      'security.polymer_resin.closure_bridge.safeTypesBridge',
+      security.polymer_resin.closure_bridge.safeTypesBridge);
+}

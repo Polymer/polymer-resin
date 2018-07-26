@@ -15,11 +15,11 @@
     "lib/**/*.js"
   ],
   "dependencies": {
-    "polymer": "^1.7.1",
-    "webcomponentsjs": "^0.7.24"
+    "@polymer/polymer": "^3.0.2",
+    "@webcomponents/webcomponentsjs": "^2.0.3"
   },
   "devDependencies": {
-    "web-component-tester": "^6.0.0"
+    "web-component-tester": "^6.7.1"
   },
   "scripts": {
     "test": "./run_tests.sh",

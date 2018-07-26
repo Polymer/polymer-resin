@@ -20,10 +20,12 @@ http://polymer.github.io/PATENTS.txt
     <script src="/components/web-component-tester/browser.js"></script>
     <link rel="import" href="/components/polymer/polymer.html" />
     <script src="polymer-resin.js"></script>
+    <script src="closure-bridge.js"></script>
     <script>
       security.polymer_resin.install(
           {
-            reportHandler: security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER
+            reportHandler: security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER,
+            safeTypesBridge: security.polymer_resin.closure_bridge.safeTypesBridge
           });
     </script>
     <script src="precompiled-test.js"></script>
