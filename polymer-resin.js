@@ -24,9 +24,6 @@
 
 goog.provide('security.polymer_resin');
 
-goog.require('goog.dom.NodeType');
-goog.require('goog.html.SafeStyle');
-goog.require('goog.html.SafeUrl');
 goog.require('goog.string');
 goog.require('security.html.contracts');
 goog.require('security.html.namealiases');
@@ -466,15 +463,15 @@ security.polymer_resin.install = function (opt_config) {
     var safeTypesBridge = security.polymer_resin.safeTypesBridge_;
 
     var nodeType = node.nodeType;
-    if (nodeType !== goog.dom.NodeType.ELEMENT) {
+    if (nodeType !== Node.ELEMENT_NODE) {
       // TODO: does polymer use CDATA sections?
-      if (nodeType === goog.dom.NodeType.TEXT) {
+      if (nodeType === Node.TEXT_NODE) {
         // Whitelist and handle text node interpolation by checking
         // the content type of the parent node.
         var parentElement = node.parentElement;
         var allowText = !parentElement;
         if (parentElement
-            && parentElement.nodeType === goog.dom.NodeType.ELEMENT) {
+            && parentElement.nodeType === Node.ELEMENT_NODE) {
           var parentElementName = parentElement.localName;
           var parentClassification = security.polymer_resin.classifyElement(
               parentElementName,
@@ -694,6 +691,13 @@ security.polymer_resin.INNOCUOUS_STRING_ = 'zClosurez';
 security.polymer_resin.INNOCUOUS_SCRIPT_ = ' /*zClosurez*/ ';
 
 /**
+ * @see goog.html.SafeUrl.INNOCUOUS_STRING
+ * @const
+ * @private
+ */
+security.polymer_resin.INNOCUOUS_URL_ = 'about:invalid#zClosurez';
+
+/**
  * @type {!Array.<!security.polymer_resin.ValueHandler>}
  * @const
  * @private
@@ -717,19 +721,19 @@ security.polymer_resin.VALUE_HANDLERS_[
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.SAFE_URL] = {
   filter: null,
-  safeReplacement: goog.html.SafeUrl.INNOCUOUS_STRING,
+  safeReplacement: security.polymer_resin.INNOCUOUS_URL_,
   safeType: security.polymer_resin.SafeType.URL
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {
   filter: null,
-  safeReplacement: goog.html.SafeUrl.INNOCUOUS_STRING,
+  safeReplacement: security.polymer_resin.INNOCUOUS_URL_,
   safeType: security.polymer_resin.SafeType.RESOURCE_URL
 };
 security.polymer_resin.VALUE_HANDLERS_[
     security.html.contracts.AttrType.SAFE_STYLE] = {
   filter: null,
-  safeReplacement: goog.html.SafeStyle.INNOCUOUS_STRING,
+  safeReplacement: security.polymer_resin.INNOCUOUS_STRING_,
   safeType: security.polymer_resin.SafeType.STYLE
 };
 security.polymer_resin.VALUE_HANDLERS_[
