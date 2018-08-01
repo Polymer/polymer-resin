@@ -20,12 +20,23 @@ http://polymer.github.io/PATENTS.txt
     <script src="/components/web-component-tester/browser.js"></script>
     <link rel="import" href="/components/polymer/polymer.html" />
     <script src="polymer-resin.js"></script>
-    <script src="closure-bridge.js"></script>
+    <script>
+      // A stub bridge that lets us check whether standalone/polymer-resin
+      // works without loading any closure bits from the closure-bridge.
+      var okOrigin = 'http://example.com/'
+      function mySafeTypesBridge(value, type, fallback) {
+        if (type === 'URL' && typeof value === 'string'
+            && value.substring(0, okOrigin.length) === okOrigin) {
+          return value;
+        }
+        return fallback;
+      }
+    </script>
     <script>
       security.polymer_resin.install(
           {
             reportHandler: security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER,
-            safeTypesBridge: security.polymer_resin.closure_bridge.safeTypesBridge
+            safeTypesBridge: mySafeTypesBridge
           });
     </script>
     <script src="precompiled-test.js"></script>

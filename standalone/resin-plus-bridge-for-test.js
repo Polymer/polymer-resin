@@ -2231,8 +2231,8 @@ goog.fs.url.browserSupportsObjectUrls = function() {
 };
 goog.string.TypedString = function() {
 };
-goog.string.Const = function() {
-  this.stringConstValueWithSecurityContract__googStringSecurityPrivate_ = "";
+goog.string.Const = function(opt_token, opt_content) {
+  this.stringConstValueWithSecurityContract__googStringSecurityPrivate_ = opt_token === goog.string.Const.GOOG_STRING_CONSTRUCTOR_TOKEN_PRIVATE_ && opt_content || "";
   this.STRING_CONST_TYPE_MARKER__GOOG_STRING_SECURITY_PRIVATE_ = goog.string.Const.TYPE_MARKER_;
 };
 goog.string.Const.prototype.implementsGoogStringTypedString = !0;
@@ -2250,14 +2250,10 @@ goog.string.Const.unwrap = function(stringConst) {
   return "type_error:Const";
 };
 goog.string.Const.from = function(s) {
-  return goog.string.Const.create__googStringSecurityPrivate_(s);
+  return new goog.string.Const(goog.string.Const.GOOG_STRING_CONSTRUCTOR_TOKEN_PRIVATE_, s);
 };
 goog.string.Const.TYPE_MARKER_ = {};
-goog.string.Const.create__googStringSecurityPrivate_ = function(s) {
-  var stringConst = new goog.string.Const;
-  stringConst.stringConstValueWithSecurityContract__googStringSecurityPrivate_ = s;
-  return stringConst;
-};
+goog.string.Const.GOOG_STRING_CONSTRUCTOR_TOKEN_PRIVATE_ = {};
 goog.string.Const.EMPTY = goog.string.Const.from("");
 goog.html = {};
 goog.html.SafeScript = function() {
@@ -2536,6 +2532,33 @@ goog.html.SafeUrl.fromDataUrl = function(dataUrl) {
 goog.html.SafeUrl.fromTelUrl = function(telUrl) {
   goog.string.caseInsensitiveStartsWith(telUrl, "tel:") || (telUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(telUrl);
+};
+goog.html.SIP_URL_PATTERN_ = /^sip[s]?:[+a-z0-9_.!$%&'*\/=^`{|}~-]+@([a-z0-9-]+\.)+[a-z0-9]{2,63}$/i;
+goog.html.SafeUrl.fromSipUrl = function(sipUrl) {
+  goog.html.SIP_URL_PATTERN_.test(decodeURIComponent(sipUrl)) || (sipUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(sipUrl);
+};
+goog.html.SafeUrl.fromSmsUrl = function(smsUrl) {
+  goog.string.caseInsensitiveStartsWith(smsUrl, "sms:") && goog.html.SafeUrl.isSmsUrlBodyValid_(smsUrl) || (smsUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(smsUrl);
+};
+goog.html.SafeUrl.isSmsUrlBodyValid_ = function(smsUrl) {
+  var bodyParams = smsUrl.match(/[?&]body=/gi);
+  if (!bodyParams) {
+    return !0;
+  }
+  if (1 < bodyParams.length) {
+    return !1;
+  }
+  var bodyValue = smsUrl.match(/[?&]body=([^&]+)/)[1];
+  if (!bodyValue) {
+    return !0;
+  }
+  try {
+    return goog.string.urlEncode(bodyValue) === bodyValue || goog.string.urlDecode(bodyValue) !== bodyValue;
+  } catch (error) {
+    return !1;
+  }
 };
 goog.html.SafeUrl.fromTrustedResourceUrl = function(trustedResourceUrl) {
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(goog.html.TrustedResourceUrl.unwrap(trustedResourceUrl));
