@@ -221,16 +221,20 @@ the left shows the app before resin is added, and the column on the right shows
 how we want it to work with Resin. Note that *polymer.html* is not explicitly
 loaded by the *index.html* page; it's loaded via a transitive HTML import.
 
-Without Resin                  | With Resin
------------------------------- | -------------------------------------
-Enter `<html><head>`           | ditto
-Load *webcomponents-lite.js*   | ditto
-                               | HTML import *polymer.html*
-                               | Load and configure *polymer-resin.js*
-Preload `<gr-app>` definition  | ditto
-HTML import *polymer.html*     |
-Load other element definitions | ditto
-Instantiate `<gr-app>` element | ditto
+<!-- mdformat off(mangles tables with empty cells in leftmost column) -->
+
+| Without Resin                  | With Resin                            |
+| ------------------------------ | ------------------------------------- |
+| Enter `<html><head>`           | ditto                                 |
+| Load *webcomponents-lite.js*   | ditto                                 |
+|                                | HTML import *polymer.html*            |
+|                                | Load and configure *polymer-resin.js* |
+| Preload `<gr-app>` definition  | ditto                                 |
+| HTML import *polymer.html*     |                                       |
+| Load other element definitions | ditto                                 |
+| Instantiate `<gr-app>` element | ditto                                 |
+
+<!-- mdformat on -->
 
 --------------------------------------------------------------------------------
 
