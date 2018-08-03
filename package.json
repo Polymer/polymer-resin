@@ -22,8 +22,10 @@
     "web-component-tester": "^6.7.1"
   },
   "scripts": {
-    "test": "./run_tests.sh",
-    "prepack": "npm test"
+    "clean": "rm -rf node_modules bower_components",
+    "prepare": "npm install --no-save bower && bower install",
+    "prepack": "npm test",
+    "test": "./run_tests.sh -l chrome"
   },
   "pre-commit": [
     "prepack"
