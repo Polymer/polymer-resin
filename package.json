@@ -1,7 +1,7 @@
 {
   "name": "polymer-resin",
   "description": "XSS mitigation for Polymer webcomponents that uses safe html type contracts",
-  "version": "1.2.8",
+  "version": "2.0.0",
   "keywords": [
     "polymer",
     "security",
@@ -9,10 +9,16 @@
   ],
   "main": "polymer-resin.js",
   "files": [
-    "*.js",
-    "polymer-resin.html",
-    "stanadlone/*",
-    "lib/**/*.js"
+    "/polymer-resin.html",
+    "/polymer-resin.js",
+    "/classify.js",
+    "/closure-bridge.js",
+    "/lib/contracts/contracts.js",
+    "/lib/namealiases/namealiases.js",
+    "/standalone/polymer-resin.html",
+    "/standalone/polymer-resin.js",
+    "/standalone/polymer-resin-debug.html",
+    "/standalone/polymer-resin-debug.js"
   ],
   "dependencies": {
     "@polymer/polymer": "^3.0.2",
