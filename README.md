@@ -45,10 +45,17 @@ auto-sanitizer][soy-sec].
 Make it easy for security auditors to quickly check whether a project's custom
 element definitions fall into a known-safe subset of Polymer.
 
+## How it works.
+
+Polymer-resin hooks into Polymer and checks values from data binding expressions
+just before they reach browser internals.  It applies configurable policies with
+type-safe exceptions so that developers can write data binding expressions
+without worrying about untrusted inputs abusing web APIs.
+
 ## Security Assumptions
 
-Existing auto-escaping template systems (CTemplates, Closure Templates, and
-go/html/template) assume that
+Existing auto-escaping template systems (CTemplates, Closure Templates,
+Go's html/template) assume that:
 
 1.  There is a large community of non-malicious application developers who
     author templates.
@@ -303,9 +310,12 @@ ENUM                 | none                         | whitelist per element/attr
 CONSTANT             | goog.string.Const            | reject
 IDENTIFIER           | none                         | reject
 
+The definitions of privileged types assume polymer-resin is installed with the
+[closure bridge][].  Other [safe type bridges][] may define privileged types differently.
+
 No processing is applied to custom properties.
 
-Values that are of the privileged type string type are unwrapped and allowed to
+Values that are of the privileged type are unwrapped and allowed to
 reach a builtin attribute alias.
 
 Values that are of other type string types are unwrapped before being filtered.
@@ -420,6 +430,8 @@ See the log output for the localhost URL to browse to.
 
 [getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#getting-started
 [configuring]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#configuring
+[closure bridge]: https://github.com/Polymer/polymer-resin/blob/master/closure-bridge.js
+[safe type bridges]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#-safetypesbridge-mybridgefn-
 
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary
