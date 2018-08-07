@@ -22,17 +22,23 @@ Relevant Code
 *   Polymer value hooks ([V1][poly-v1], [V2][poly-v2])
 *   JavaScript [Safe HTML APIs][safe-html-types-js]
 
+## Summary
+
+Polymer-resin hooks into Polymer and checks values from data binding expressions
+just before they reach browser internals.  It applies configurable policies with
+type-safe exceptions so that developers can write data binding expressions
+without worrying about untrusted inputs abusing web APIs.
+
+![Untrusted javascript colon URL flowing through a custom element, into Polymer, through a DOM API, to the browser and eventually to the JavaScript engine](images/polymer-diagram-with-resin.png)
+
+For example, if a `<bar-element url={{url}}>` is backed by an `<a href={{url}}>`
+and an attacker can cause `url` to be `javascript:alert(1)`, then, without
+Polymer-resin, Polymer will assign that string to `<a href>` at which point
+the browser takes over, and routes `alert(1)` to the JavaScript engine,
+which unpacks and executes the attacker's payload: `alert(1)`.
+
 ## Background
 
-Gerrit is a code review tool that may be used by Bets to manage their codebases.
-Polygerrit-UI is a rewrite of the Gerrit UI using Polymer instead of Closure
-Templates.
-
-Vulnerabilities in code review tools affects the integrity of the codebase -- an
-XSS (Cross-site scripting) attack that can submit a form in a code review tool
-can send spurious approvals; and (depending on the level of integration with
-revision control) suggest edits, commit approved changes, and kick off test runs
-and other processes with edited files as inputs.
 
 In most template languages, one defines templates, but in Polymer one defines
 custom elements. This means that there is not a closed class of HTML elements
@@ -44,13 +50,6 @@ auto-sanitizer][soy-sec].
 
 Make it easy for security auditors to quickly check whether a project's custom
 element definitions fall into a known-safe subset of Polymer.
-
-## How it works.
-
-Polymer-resin hooks into Polymer and checks values from data binding expressions
-just before they reach browser internals.  It applies configurable policies with
-type-safe exceptions so that developers can write data binding expressions
-without worrying about untrusted inputs abusing web APIs.
 
 ## Security Assumptions
 
