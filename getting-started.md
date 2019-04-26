@@ -9,9 +9,7 @@
 This document explains how to use *polymer-resin*. See [README.md][README] if
 you want to know what *polymer-resin* is.
 
-
 ## <a name="loading">Loading polymer-resin into your app</a>
-
 
 ### Getting polymer-resin via bower
 
@@ -96,7 +94,10 @@ importing, and must appear before polymer-resin is loaded.
 
 ### <a name="configuring">Configuring</a>
 
-The above Polymer document shows a synchronous script tag.
+When polymer-resin is installed, you specify a configuration.
+
+The above Polymer document demonstrates installing resin via a synchronous
+script tag.
 
 ```html
 <script>
@@ -104,7 +105,7 @@ security.polymer_resin.install({ /* config */ })
 </script>
 ```
 
-Polymer resin will provide no protection until explicitly installed. This allows
+polymer-resin will provide no protection until explicitly installed. This allows
 it to be installed on an experimental basis for some subset of users during
 migration.
 
@@ -249,7 +250,7 @@ security.polymer_resin.install(
       // Allow application to progress as normal so we can
       // exercise as much of the app as possible without working
       // around problems caused by false positives.
-      // HACK: DO NOT RUN IN PROD.
+      // HACK: DO NOT RUN IN PROD. DO NOT SUBMIT.
       'UNSAFE_passThruDisallowedValues': true
     })
 </script>
@@ -427,9 +428,7 @@ a data binding expression, it's more likely that they can get it to other common
 targets like JavaScript, server-side template languages, and database query
 engines.
 
-
 [README]: README.md
-
 
 [vulcanize]: http://closuretools.blogspot.com/2016/10/polymer-closure-compiler-in-gulp.html
 [goog.html]: https://github.com/google/closure-library/tree/master/closure/goog/html

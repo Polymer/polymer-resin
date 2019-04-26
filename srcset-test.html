@@ -16,9 +16,21 @@ http://polymer.github.io/PATENTS.txt
 <html>
 <head>
   <meta charset="utf-8">
-  <script>function doInstall() {
+  <script>
+  function doInstall() {
     security.polymer_resin.install({
-      'allowedIdentifierPrefixes': ['safe-'],
+      'reportHandler': function (isViolation, formatString) {
+        'use strict';
+        var index = 1;
+        var args = arguments;
+        var message = formatString.replace(/%./g, function () { return args[++index]; });
+        // Squirrel away content where it is obvious when interactively debugging and
+        // the test code can get at it without complicating loading.
+        if (isViolation) {
+          document.getElementById('resin-reports').textContent += message + '\n';
+        }
+        security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER.apply(null, args);
+      },
       'safeTypesBridge': security.polymer_resin.closure_bridge.safeTypesBridge
     });
   }</script>
@@ -27,28 +39,27 @@ http://polymer.github.io/PATENTS.txt
   <link rel="import" href="/components/polymer/polymer.html" />
   <script src="resin-plus-bridge-for-test.js"></script>
   <script>doInstall();</script>
-  <script src="identifier-test.js"></script>
-  <title>Identifier Test</title>
+  <script src="srcset-test.js"></script>
+  <title>Srcset Test</title>
 </head>
 <body>
-  <dom-module id="uses-identifiers">
-    <template>
-      <input id="{{x}}" name="{{x}}">:
-      <label html-for="{{x}}">{{x}}</label>
-    </template>
+  <pre id="resin-reports"></pre>
+  
+  <dom-module id="test-image">
+    <template><img srcset={{sources}} /></template>
     <script>
       Polymer({
-        is: 'uses-identifiers',
+        is: 'test-image',
         properties: {
-          x: String
+          sources: Object
         }
       });
     </script>
   </dom-module>
 
-  <test-fixture id="identifier-test-fixture">
+  <test-fixture id="srcset-fixture">
     <template>
-      <uses-identifiers />
+      <test-image />
     </template>
   </test-fixture>
 </body>

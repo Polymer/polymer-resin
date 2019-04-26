@@ -61,7 +61,7 @@ suite(
         var marginRight = margins.right;
 
         assert.isOk(/10px/.test(marginRight), marginRight || undefined);
-        assert.isOk(/calc\(-10px \+ 50%\)/.test(marginLeft),
+        assert.isOk(/calc\((?:-10px \+ 50%|50% \+ -10px)\)/.test(marginLeft),
                     marginLeft || undefined);
         assert.isOk(/Hello, World!/.test(textNodeValue), textNodeValue);
       });

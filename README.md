@@ -1,6 +1,5 @@
 # Polymer Resin [![Build Status][build-status]][build-dashboard]
 
-
 XSS mitigation for Polymer webcomponents.
 
 --------------------------------------------------------------------------------
@@ -39,12 +38,10 @@ which unpacks and executes the attacker's payload: `alert(1)`.
 
 ## Background
 
-
 In most template languages, one defines templates, but in Polymer one defines
 custom elements. This means that there is not a closed class of HTML elements
 and attributes about which we can reason as there is for [Closure Templates
 auto-sanitizer][soy-sec].
-
 
 ## Goal
 
@@ -155,7 +152,6 @@ page render process. It should load and initialize before the applications main
 element is instantiated so that it can intercept reflected XSS. Putting the HTML
 import or script load immediately after the load of framework code suffices.
 
-
 ### Text interpolation
 
 When text is interpolated
@@ -174,7 +170,6 @@ with a *TextNode* as the node, and a *null* property name.
 
 We use this to intercept text interpolation and allow it only when the
 content is human-readable HTML.
-
 
 ## Life of a Polymer+Resin page
 
@@ -293,7 +288,6 @@ program execution.
 
 ## Table of Security-Relevant Properties and Attributes
 
-
 The `security.html.contracts` module captures builtin HTML element and attribute
 relationships, and we apply the following filters.
 
@@ -404,7 +398,6 @@ it forces the imports above it to be handled before *custom-element.html*. The
 
 ## Running tests from the command line
 
-
 Per https://github.com/Polymer/web-component-tester
 make sure that you have bower installed and have run `bower update`.
 Then use the test script.
@@ -424,14 +417,10 @@ $ ./run_tests.sh -p -l chrome
 causes it to keep the server open.
 See the log output for the localhost URL to browse to.
 
-
-
-
 [getting-started]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#getting-started
 [configuring]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#configuring
 [closure bridge]: https://github.com/Polymer/polymer-resin/blob/master/closure-bridge.js
 [safe type bridges]: https://github.com/Polymer/polymer-resin/blob/master/getting-started.md#-safetypesbridge-mybridgefn-
-
 
 [reflected-xss]: https://www.owasp.org/index.php/Testing_for_Reflected_Cross_site_scripting_(OTG-INPVAL-001)#Summary
 [webcomponents]: https://developer.mozilla.org/en-US/docs/Web/Web_Components#Specifications

@@ -71,17 +71,19 @@ goog.STRICT_MODE_COMPATIBLE = !1;
 goog.DISALLOW_TEST_ONLY_CODE = !goog.DEBUG;
 goog.ENABLE_CHROME_APP_SAFE_SCRIPT_LOADING = !1;
 goog.provide = function(name) {
-  if (goog.isInGoogModuleLoader_()) {
+  if (goog.isInModuleLoader_()) {
     throw Error("goog.provide cannot be used within a module.");
   }
-  goog.isInEs6ModuleLoader_() && goog.logToConsole_("goog.provide should not be used within a module.");
   goog.constructNamespace_(name);
 };
 goog.constructNamespace_ = function(name, opt_obj) {
   goog.exportPath_(name, opt_obj);
 };
-goog.getScriptNonce = function() {
-  null === goog.cspNonce_ && (goog.cspNonce_ = goog.getScriptNonce_(goog.global.document) || "");
+goog.getScriptNonce = function(opt_window) {
+  if (opt_window && opt_window != goog.global) {
+    return goog.getScriptNonce_(opt_window.document);
+  }
+  null === goog.cspNonce_ && (goog.cspNonce_ = goog.getScriptNonce_(goog.global.document));
   return goog.cspNonce_;
 };
 goog.NONCE_PATTERN_ = /^[\w+/_-]+[=]{0,2}$/;
@@ -94,7 +96,7 @@ goog.getScriptNonce_ = function(doc) {
       return nonce;
     }
   }
-  return null;
+  return "";
 };
 goog.VALID_MODULE_RE_ = /^[a-zA-Z_$][a-zA-Z0-9._$]*$/;
 goog.module = function(name) {
@@ -133,7 +135,7 @@ goog.isInEs6ModuleLoader_ = function() {
 goog.module.declareLegacyNamespace = function() {
   goog.moduleLoaderState_.declareLegacyNamespace = !0;
 };
-goog.module.declareNamespace = function(namespace) {
+goog.declareModuleId = function(namespace) {
   if (goog.moduleLoaderState_) {
     goog.moduleLoaderState_.moduleName = namespace;
   } else {
@@ -145,6 +147,7 @@ goog.module.declareNamespace = function(namespace) {
     goog.loadedModules_[namespace] = {exports:exports, type:goog.ModuleType.ES6, moduleId:namespace};
   }
 };
+goog.module.declareNamespace = goog.declareModuleId;
 goog.setTestOnly = function(opt_message) {
   if (goog.DISALLOW_TEST_ONLY_CODE) {
     throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + (opt_message ? ": " + opt_message : "."));
@@ -174,6 +177,9 @@ goog.logToConsole_ = function(msg) {
   goog.global.console && goog.global.console.error(msg);
 };
 goog.require = function() {
+};
+goog.requireType = function() {
+  return {};
 };
 goog.basePath = "";
 goog.nullFunction = function() {
@@ -1289,7 +1295,7 @@ security.html.contracts.contentTypeForElement = function(elemName) {
 security.html.contracts.isEnumValueAllowed = function(elemName, attrName, value) {
   var valueSetIndex = null, attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_[elemName];
   attrToValueSetIndex && (valueSetIndex = attrToValueSetIndex[attrName]);
-  return goog.isNumber(valueSetIndex) || ((attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_["*"]) && (valueSetIndex = attrToValueSetIndex[attrName]), goog.isNumber(valueSetIndex)) ? !0 === security.html.contracts.ENUM_VALUE_SETS_[valueSetIndex][String(value).toLowerCase()] : !1;
+  return "number" !== typeof valueSetIndex && ((attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_["*"]) && (valueSetIndex = attrToValueSetIndex[attrName]), "number" !== typeof valueSetIndex) ? !1 : !0 === security.html.contracts.ENUM_VALUE_SETS_[valueSetIndex][String(value).toLowerCase()];
 };
 security.html.contracts.GLOBAL_ATTRS_ = {align:security.html.contracts.AttrType.NONE, alt:security.html.contracts.AttrType.NONE, "aria-activedescendant":security.html.contracts.AttrType.IDENTIFIER, "aria-atomic":security.html.contracts.AttrType.NONE, "aria-autocomplete":security.html.contracts.AttrType.NONE, "aria-busy":security.html.contracts.AttrType.NONE, "aria-checked":security.html.contracts.AttrType.NONE, "aria-disabled":security.html.contracts.AttrType.NONE, "aria-dropeffect":security.html.contracts.AttrType.NONE, 
 "aria-expanded":security.html.contracts.AttrType.NONE, "aria-haspopup":security.html.contracts.AttrType.NONE, "aria-hidden":security.html.contracts.AttrType.NONE, "aria-invalid":security.html.contracts.AttrType.NONE, "aria-label":security.html.contracts.AttrType.NONE, "aria-level":security.html.contracts.AttrType.NONE, "aria-live":security.html.contracts.AttrType.NONE, "aria-multiline":security.html.contracts.AttrType.NONE, "aria-multiselectable":security.html.contracts.AttrType.NONE, "aria-orientation":security.html.contracts.AttrType.NONE, 
@@ -1301,13 +1307,14 @@ multiple:security.html.contracts.AttrType.NONE, muted:security.html.contracts.At
 selected:security.html.contracts.AttrType.NONE, shape:security.html.contracts.AttrType.NONE, size:security.html.contracts.AttrType.NONE, sizes:security.html.contracts.AttrType.NONE, span:security.html.contracts.AttrType.NONE, spellcheck:security.html.contracts.AttrType.NONE, src:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, start:security.html.contracts.AttrType.NONE, step:security.html.contracts.AttrType.NONE, style:security.html.contracts.AttrType.SAFE_STYLE, summary:security.html.contracts.AttrType.NONE, 
 tabindex:security.html.contracts.AttrType.NONE, target:security.html.contracts.AttrType.ENUM, title:security.html.contracts.AttrType.NONE, translate:security.html.contracts.AttrType.NONE, valign:security.html.contracts.AttrType.NONE, value:security.html.contracts.AttrType.NONE, width:security.html.contracts.AttrType.NONE, wrap:security.html.contracts.AttrType.NONE};
 security.html.contracts.ELEMENT_CONTRACTS_ = {a:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, area:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, audio:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, blockquote:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, button:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, 
-command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, iframe:{srcdoc:[{contract:security.html.contracts.AttrType.SAFE_HTML}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], 
-pattern:[{contract:security.html.contracts.AttrType.NONE}], readonly:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"author"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"bookmark"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"canonical"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"cite"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"help"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"icon"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"license"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"next"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prerender"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"preconnect"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"preload"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prev"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"search"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"subresource"}], media:[{contract:security.html.contracts.AttrType.NONE}], 
-nonce:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, menuitem:{icon:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, ol:{type:[{contract:security.html.contracts.AttrType.NONE}]}, q:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, script:{nonce:[{contract:security.html.contracts.AttrType.NONE}]}, source:{media:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, 
-style:{media:[{contract:security.html.contracts.AttrType.NONE}], nonce:[{contract:security.html.contracts.AttrType.NONE}]}, time:{datetime:[{contract:security.html.contracts.AttrType.NONE}]}, video:{autoplay:[{contract:security.html.contracts.AttrType.NONE}], controls:[{contract:security.html.contracts.AttrType.NONE}], poster:[{contract:security.html.contracts.AttrType.SAFE_URL}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}};
+command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, details:{open:[{contract:security.html.contracts.AttrType.NONE}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, iframe:{srcdoc:[{contract:security.html.contracts.AttrType.SAFE_HTML}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
+formmethod:[{contract:security.html.contracts.AttrType.NONE}], pattern:[{contract:security.html.contracts.AttrType.NONE}], readonly:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", 
+requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"author"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"bookmark"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"canonical"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"cite"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
+contingentAttribute:"rel", requiredValue:"help"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"icon"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"license"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"next"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
+contingentAttribute:"rel", requiredValue:"prerender"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"preconnect"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"preload"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prev"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"search"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
+contingentAttribute:"rel", requiredValue:"subresource"}], media:[{contract:security.html.contracts.AttrType.NONE}], nonce:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, menuitem:{icon:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, ol:{type:[{contract:security.html.contracts.AttrType.NONE}]}, q:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, script:{nonce:[{contract:security.html.contracts.AttrType.NONE}]}, source:{media:[{contract:security.html.contracts.AttrType.NONE}], 
+src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, style:{media:[{contract:security.html.contracts.AttrType.NONE}], nonce:[{contract:security.html.contracts.AttrType.NONE}]}, textarea:{readonly:[{contract:security.html.contracts.AttrType.NONE}]}, time:{datetime:[{contract:security.html.contracts.AttrType.NONE}]}, video:{autoplay:[{contract:security.html.contracts.AttrType.NONE}], controls:[{contract:security.html.contracts.AttrType.NONE}], poster:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
+src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}};
 security.html.contracts.ELEMENT_CONTENT_TYPES_ = {a:security.html.contracts.ElementContentType.SAFE_HTML, abbr:security.html.contracts.ElementContentType.SAFE_HTML, address:security.html.contracts.ElementContentType.SAFE_HTML, applet:security.html.contracts.ElementContentType.BLACKLIST, area:security.html.contracts.ElementContentType.VOID, article:security.html.contracts.ElementContentType.SAFE_HTML, aside:security.html.contracts.ElementContentType.SAFE_HTML, audio:security.html.contracts.ElementContentType.SAFE_HTML, 
 b:security.html.contracts.ElementContentType.SAFE_HTML, base:security.html.contracts.ElementContentType.BLACKLIST, bdi:security.html.contracts.ElementContentType.SAFE_HTML, bdo:security.html.contracts.ElementContentType.SAFE_HTML, blockquote:security.html.contracts.ElementContentType.SAFE_HTML, body:security.html.contracts.ElementContentType.SAFE_HTML, br:security.html.contracts.ElementContentType.VOID, button:security.html.contracts.ElementContentType.SAFE_HTML, canvas:security.html.contracts.ElementContentType.SAFE_HTML, 
 caption:security.html.contracts.ElementContentType.SAFE_HTML, cite:security.html.contracts.ElementContentType.SAFE_HTML, code:security.html.contracts.ElementContentType.SAFE_HTML, col:security.html.contracts.ElementContentType.VOID, colgroup:security.html.contracts.ElementContentType.SAFE_HTML, command:security.html.contracts.ElementContentType.SAFE_HTML, data:security.html.contracts.ElementContentType.SAFE_HTML, datalist:security.html.contracts.ElementContentType.SAFE_HTML, dd:security.html.contracts.ElementContentType.SAFE_HTML, 
@@ -1369,41 +1376,26 @@ security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_ = new RegExp("^(?!(?:ann
 security.polymer_resin.classifyElement = function(name, ctor) {
   var customElementsRegistry = window.customElements;
   if (security.polymer_resin.usePolymerTelemetry_) {
-    for (var regs = Polymer.telemetry.registrations, n = regs.length, i = security.polymer_resin.countPolymerTelemetryUnrolled_; i < n; ++i) {
+    for (var regs = window.Polymer.telemetry.registrations, n = regs.length, i = security.polymer_resin.countPolymerTelemetryUnrolled_; i < n; ++i) {
       security.polymer_resin.docRegisteredElements_[regs[i].is] = security.polymer_resin.docRegisteredElements_;
     }
     security.polymer_resin.countPolymerTelemetryUnrolled_ = n;
   }
   return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : "HTMLUnknownElement" === ctor.name ? security.polymer_resin.CustomElementClassification.LEGACY : "HTMLElement" === ctor.name && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
 };
+security.polymer_resin.sanitizer = {};
 security.polymer_resin.STANDALONE = !0;
 security.polymer_resin.SafeType = {CONSTANT:"CONSTANT", HTML:"HTML", JAVASCRIPT:"JAVASCRIPT", RESOURCE_URL:"RESOURCE_URL", STRING:"STRING", STYLE:"STYLE", URL:"URL"};
-security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER = function(isViolation, formatString, var_args) {
+security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER = function(isViolation, formatString, var_args) {
   for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
     consoleArgs[i - 1] = arguments[i];
   }
   isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
 };
-security.polymer_resin.UNSAFE_passThruDisallowedValues_ = function(enable) {
-  goog.DEBUG && (security.polymer_resin.allowUnsafeValues_ = !0 === enable);
-};
-security.polymer_resin.allowIdentifierWithPrefix_ = function(prefix) {
-  security.polymer_resin.allowedIdentifierPattern_ = new RegExp(security.polymer_resin.allowedIdentifierPattern_.source + "|^" + goog.string.regExpEscape(prefix));
-};
-security.polymer_resin.setReportHandler_ = function(reportHandler) {
-  security.polymer_resin.reportHandler_ = reportHandler || null;
-};
-security.polymer_resin.setSafeTypesBridge_ = function(safeTypesBridge) {
-  security.polymer_resin.safeTypesBridge_ = safeTypesBridge || security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_;
-};
-security.polymer_resin.allowedIdentifierPattern_ = /^$/;
-security.polymer_resin.allowUnsafeValues_ = !1;
-security.polymer_resin.reportHandler_ = void 0;
 security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_ = function(value, type, fallback) {
   return fallback;
 };
-security.polymer_resin.safeTypesBridge_ = security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_;
-security.polymer_resin.install = function(opt_config) {
+security.polymer_resin.sanitizer.makeSanitizer = function(config) {
   function getAttributeValue(name) {
     var value = this.getAttribute(name);
     return !value || /[\[\{]/.test(name) ? null : value;
@@ -1412,7 +1404,7 @@ security.polymer_resin.install = function(opt_config) {
     if (!value) {
       return value;
     }
-    var safeTypesBridge = security.polymer_resin.safeTypesBridge_, nodeType = node.nodeType;
+    var nodeType = node.nodeType;
     if (nodeType !== Node.ELEMENT_NODE) {
       if (nodeType === Node.TEXT_NODE) {
         var parentElement = node.parentElement, allowText = !parentElement;
@@ -1433,8 +1425,8 @@ security.polymer_resin.install = function(opt_config) {
           return "" + safeTypesBridge(value, security.polymer_resin.SafeType.STRING, value);
         }
       }
-      security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
-      return security.polymer_resin.INNOCUOUS_STRING_;
+      reportHandler && reportHandler(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
+      return security.polymer_resin.sanitizer.INNOCUOUS_STRING;
     }
     var elementName = node.localName;
     var elementName$jscomp$0 = node.localName;
@@ -1443,7 +1435,7 @@ security.polymer_resin.install = function(opt_config) {
       uncustomizedProxy || (uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0] = document.createElement(elementName$jscomp$0));
       var elementProxy = uncustomizedProxy;
     } else {
-      elementProxy = VANILLA_HTML_ELEMENT_;
+      elementProxy = VANILLA_HTML_ELEMENT;
     }
     switch(type) {
       case "attribute":
@@ -1465,7 +1457,7 @@ security.polymer_resin.install = function(opt_config) {
     }
     var attrName = "attribute" == type ? name.toLowerCase() : security.html.namealiases.propertyToAttr(name), attrType = security.html.contracts.typeOfAttribute(elementName, attrName, goog.bind(getAttributeValue, node)), safeValue = DID_NOT_UNWRAP, safeReplacement = null;
     if (null != attrType) {
-      var valueHandler = security.polymer_resin.VALUE_HANDLERS_[attrType], safeType = valueHandler.safeType;
+      var valueHandler = valueHandlers[attrType], safeType = valueHandler.safeType;
       safeReplacement = valueHandler.safeReplacement;
       safeType && (safeValue = safeTypesBridge(value, safeType, DID_NOT_UNWRAP));
       if (safeValue === DID_NOT_UNWRAP && valueHandler.filter) {
@@ -1473,23 +1465,48 @@ security.polymer_resin.install = function(opt_config) {
         safeValue = valueHandler.filter(elementName, attrName, stringValue);
       }
     }
-    safeValue === DID_NOT_UNWRAP && (safeValue = safeReplacement || security.polymer_resin.INNOCUOUS_STRING_, security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!0, 'Failed to sanitize attribute of <%s>: <%s %s="%O">', elementName, elementName, attrName, value));
+    safeValue === DID_NOT_UNWRAP && (safeValue = safeReplacement || security.polymer_resin.sanitizer.INNOCUOUS_STRING, reportHandler && reportHandler(!0, 'Failed to sanitize attribute of <%s>: <%s %s="%O">', elementName, elementName, attrName, value));
     return safeValue;
   }
-  if (opt_config) {
-    var configUnsafePassThruDisallowedValues = opt_config.UNSAFE_passThruDisallowedValues, configAllowedIdentifierPrefixes = opt_config.allowedIdentifierPrefixes, configReportHandler = opt_config.reportHandler, safeTypesBridge$jscomp$0 = opt_config.safeTypesBridge;
-    null != configUnsafePassThruDisallowedValues && security.polymer_resin.UNSAFE_passThruDisallowedValues_(configUnsafePassThruDisallowedValues);
-    if (configAllowedIdentifierPrefixes) {
-      for (var i = 0, n = configAllowedIdentifierPrefixes.length; i < n; ++i) {
-        security.polymer_resin.allowIdentifierWithPrefix_(configAllowedIdentifierPrefixes[i]);
-      }
+  var reportHandler = config.reportHandler || void 0, safeTypesBridge = config.safeTypesBridge || security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_, configUnsafePassThruDisallowedValues = config.UNSAFE_passThruDisallowedValues, allowUnsafeValues = !1;
+  null != configUnsafePassThruDisallowedValues && goog.DEBUG && (allowUnsafeValues = !0 === configUnsafePassThruDisallowedValues);
+  var allowedIdentifierPattern_ = /^$/, configAllowedIdentifierPrefixes = config.allowedIdentifierPrefixes;
+  if (configAllowedIdentifierPrefixes) {
+    for (var i = 0, n = configAllowedIdentifierPrefixes.length; i < n; ++i) {
+      allowedIdentifierPattern_ = new RegExp(allowedIdentifierPattern_.source + "|^" + goog.string.regExpEscape(configAllowedIdentifierPrefixes[i]));
     }
-    void 0 !== configReportHandler && security.polymer_resin.setReportHandler_(configReportHandler);
-    void 0 !== safeTypesBridge$jscomp$0 && security.polymer_resin.setSafeTypesBridge_(safeTypesBridge$jscomp$0);
   }
-  goog.DEBUG && void 0 === security.polymer_resin.reportHandler_ && "undefined" !== typeof console && security.polymer_resin.setReportHandler_(security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER);
-  security.polymer_resin.reportHandler_ && security.polymer_resin.reportHandler_(!1, "initResin");
-  var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT_ = document.createElement("polyresinuncustomized"), DID_NOT_UNWRAP = {};
+  goog.DEBUG && void 0 === reportHandler && "undefined" !== typeof console && (reportHandler = security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER);
+  reportHandler && reportHandler(!1, "initResin");
+  var valueHandlers = [];
+  valueHandlers[security.html.contracts.AttrType.NONE] = {filter:function(e, a, v) {
+    return v;
+  }, safeReplacement:null, safeType:null};
+  valueHandlers[security.html.contracts.AttrType.SAFE_HTML] = {filter:null, safeReplacement:null, safeType:security.polymer_resin.SafeType.HTML};
+  valueHandlers[security.html.contracts.AttrType.SAFE_URL] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.URL};
+  valueHandlers[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.RESOURCE_URL};
+  valueHandlers[security.html.contracts.AttrType.SAFE_STYLE] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.STYLE};
+  valueHandlers[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_SCRIPT_, safeType:security.polymer_resin.SafeType.JAVASCRIPT};
+  valueHandlers[security.html.contracts.AttrType.ENUM] = {filter:function(e, a, v) {
+    var lv = String(v).toLowerCase();
+    return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+  }, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:null};
+  valueHandlers[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.CONSTANT};
+  valueHandlers[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
+    return allowedIdentifierPattern_.test(v) ? v : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+  }, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.CONSTANT};
+  var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT = document.createElement("polyresinuncustomized"), DID_NOT_UNWRAP = {};
+  return allowUnsafeValues ? function(node, name, type, value) {
+    sanitize(node, name, type, value);
+    return value;
+  } : sanitize;
+};
+security.polymer_resin.sanitizer.INNOCUOUS_STRING = "zClosurez";
+security.polymer_resin.sanitizer.INNOCUOUS_SCRIPT_ = " /*zClosurez*/ ";
+security.polymer_resin.sanitizer.INNOCUOUS_URL_ = "about:invalid#zClosurez";
+security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER = security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER;
+security.polymer_resin.install = function(opt_config) {
+  var sanitize = security.polymer_resin.sanitizer.makeSanitizer(opt_config || {});
   if (/^1\./.test(Polymer.version)) {
     security.polymer_resin.hintUsesDeprecatedRegisterElement();
     var origCompute = Polymer.Base._computeFinalAnnotationValue, computeFinalAnnotationSafeValue = function(node, property, value, info) {
@@ -1499,8 +1516,7 @@ security.polymer_resin.install = function(opt_config) {
       } else {
         name = property, type = info && info.kind || "property";
       }
-      var safeValue = sanitize(node, name, type, finalValue);
-      return security.polymer_resin.allowUnsafeValues_ ? finalValue : safeValue;
+      return sanitize(node, name, type, finalValue);
     };
     Polymer.Base._computeFinalAnnotationValue = computeFinalAnnotationSafeValue;
     if (Polymer.Base._computeFinalAnnotationValue !== computeFinalAnnotationSafeValue) {
@@ -1508,8 +1524,8 @@ security.polymer_resin.install = function(opt_config) {
     }
   } else {
     var origSanitize = Polymer.sanitizeDOMValue || Polymer.Settings && Polymer.Settings.sanitizeDOMValue, sanitizeDOMValue = function(value, name, type, node) {
-      var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value, safeValue = node ? sanitize(node, name, type, origSanitizedValue) : security.polymer_resin.INNOCUOUS_STRING_;
-      return security.polymer_resin.allowUnsafeValues_ ? origSanitizedValue : safeValue;
+      var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value;
+      return node ? sanitize(node, name, type, origSanitizedValue) : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
     };
     if (Polymer.Settings && Polymer.Settings.setSanitizeDOMValue) {
       Polymer.Settings.setSanitizeDOMValue(sanitizeDOMValue);
@@ -1520,27 +1536,7 @@ security.polymer_resin.install = function(opt_config) {
     }
   }
 };
-security.polymer_resin.INNOCUOUS_STRING_ = "zClosurez";
-security.polymer_resin.INNOCUOUS_SCRIPT_ = " /*zClosurez*/ ";
-security.polymer_resin.INNOCUOUS_URL_ = "about:invalid#zClosurez";
-security.polymer_resin.VALUE_HANDLERS_ = [];
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.NONE] = {filter:function(e, a, v) {
-  return v;
-}, safeReplacement:null, safeType:null};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_HTML] = {filter:null, safeReplacement:null, safeType:security.polymer_resin.SafeType.HTML};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_URL] = {filter:null, safeReplacement:security.polymer_resin.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.URL};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:null, safeReplacement:security.polymer_resin.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.RESOURCE_URL};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_STYLE] = {filter:null, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, safeType:security.polymer_resin.SafeType.STYLE};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:null, safeReplacement:security.polymer_resin.INNOCUOUS_SCRIPT_, safeType:security.polymer_resin.SafeType.JAVASCRIPT};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.ENUM] = {filter:function(e, a, v) {
-  var lv = String(v).toLowerCase();
-  return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : security.polymer_resin.INNOCUOUS_STRING_;
-}, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, safeType:null};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:null, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, safeType:security.polymer_resin.SafeType.CONSTANT};
-security.polymer_resin.VALUE_HANDLERS_[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
-  return security.polymer_resin.allowedIdentifierPattern_.test(v) ? v : security.polymer_resin.INNOCUOUS_STRING_;
-}, safeReplacement:security.polymer_resin.INNOCUOUS_STRING_, safeType:security.polymer_resin.SafeType.CONSTANT};
-security.polymer_resin.STANDALONE && (goog.exportSymbol("security.polymer_resin.install", security.polymer_resin.install), goog.exportSymbol("security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER", security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER));
+security.polymer_resin.STANDALONE && (goog.exportSymbol("security.polymer_resin.install", security.polymer_resin.install), goog.exportSymbol("security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER", security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER));
 goog.debug = {};
 goog.debug.Error = function(opt_msg) {
   if (Error.captureStackTrace) {
@@ -2272,6 +2268,9 @@ goog.html.SafeScript.fromConstantAndArgs = function(code, var_args) {
   }
   return goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse("(" + goog.string.Const.unwrap(code) + ")(" + args.join(", ") + ");");
 };
+goog.html.SafeScript.fromJson = function(val) {
+  return goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse(goog.html.SafeScript.stringify_(val));
+};
 goog.html.SafeScript.prototype.getTypedStringValue = function() {
   return this.privateDoNotAccessOrElseSafeScriptWrappedValue_;
 };
@@ -2300,7 +2299,9 @@ goog.i18n = {};
 goog.i18n.bidi = {};
 goog.i18n.bidi.FORCE_RTL = !1;
 goog.i18n.bidi.IS_RTL = goog.i18n.bidi.FORCE_RTL || ("ar" == goog.LOCALE.substring(0, 2).toLowerCase() || "fa" == goog.LOCALE.substring(0, 2).toLowerCase() || "he" == goog.LOCALE.substring(0, 2).toLowerCase() || "iw" == goog.LOCALE.substring(0, 2).toLowerCase() || "ps" == goog.LOCALE.substring(0, 2).toLowerCase() || "sd" == goog.LOCALE.substring(0, 2).toLowerCase() || "ug" == goog.LOCALE.substring(0, 2).toLowerCase() || "ur" == goog.LOCALE.substring(0, 2).toLowerCase() || "yi" == goog.LOCALE.substring(0, 
-2).toLowerCase()) && (2 == goog.LOCALE.length || "-" == goog.LOCALE.substring(2, 3) || "_" == goog.LOCALE.substring(2, 3)) || 3 <= goog.LOCALE.length && "ckb" == goog.LOCALE.substring(0, 3).toLowerCase() && (3 == goog.LOCALE.length || "-" == goog.LOCALE.substring(3, 4) || "_" == goog.LOCALE.substring(3, 4));
+2).toLowerCase()) && (2 == goog.LOCALE.length || "-" == goog.LOCALE.substring(2, 3) || "_" == goog.LOCALE.substring(2, 3)) || 3 <= goog.LOCALE.length && "ckb" == goog.LOCALE.substring(0, 3).toLowerCase() && (3 == goog.LOCALE.length || "-" == goog.LOCALE.substring(3, 4) || "_" == goog.LOCALE.substring(3, 4)) || 7 <= goog.LOCALE.length && ("-" == goog.LOCALE.substring(2, 3) || "_" == goog.LOCALE.substring(2, 3)) && ("adlm" == goog.LOCALE.substring(3, 7).toLowerCase() || "arab" == goog.LOCALE.substring(3, 
+7).toLowerCase() || "hebr" == goog.LOCALE.substring(3, 7).toLowerCase() || "nkoo" == goog.LOCALE.substring(3, 7).toLowerCase() || "rohg" == goog.LOCALE.substring(3, 7).toLowerCase() || "thaa" == goog.LOCALE.substring(3, 7).toLowerCase()) || 8 <= goog.LOCALE.length && ("-" == goog.LOCALE.substring(3, 4) || "_" == goog.LOCALE.substring(3, 4)) && ("adlm" == goog.LOCALE.substring(4, 8).toLowerCase() || "arab" == goog.LOCALE.substring(4, 8).toLowerCase() || "hebr" == goog.LOCALE.substring(4, 8).toLowerCase() || 
+"nkoo" == goog.LOCALE.substring(4, 8).toLowerCase() || "rohg" == goog.LOCALE.substring(4, 8).toLowerCase() || "thaa" == goog.LOCALE.substring(4, 8).toLowerCase());
 goog.i18n.bidi.Format = {LRE:"\u202a", RLE:"\u202b", PDF:"\u202c", LRM:"\u200e", RLM:"\u200f"};
 goog.i18n.bidi.Dir = {LTR:1, RTL:-1, NEUTRAL:0};
 goog.i18n.bidi.RIGHT = "right";
@@ -2310,8 +2311,8 @@ goog.i18n.bidi.I18N_LEFT = goog.i18n.bidi.IS_RTL ? goog.i18n.bidi.RIGHT : goog.i
 goog.i18n.bidi.toDir = function(givenDir, opt_noNeutral) {
   return "number" == typeof givenDir ? 0 < givenDir ? goog.i18n.bidi.Dir.LTR : 0 > givenDir ? goog.i18n.bidi.Dir.RTL : opt_noNeutral ? null : goog.i18n.bidi.Dir.NEUTRAL : null == givenDir ? null : givenDir ? goog.i18n.bidi.Dir.RTL : goog.i18n.bidi.Dir.LTR;
 };
-goog.i18n.bidi.ltrChars_ = "A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02b8\u0300-\u0590\u0800-\u1fff\u200e\u2c00-\ufb1c\ufe00-\ufe6f\ufefd-\uffff";
-goog.i18n.bidi.rtlChars_ = "\u0591-\u06ef\u06fa-\u07ff\u200f\ufb1d-\ufdff\ufe70-\ufefc";
+goog.i18n.bidi.ltrChars_ = "A-Za-z\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u02b8\u0300-\u0590\u0900-\u1fff\u200e\u2c00-\ud801\ud804-\ud839\ud83c-\udbff\uf900-\ufb1c\ufe00-\ufe6f\ufefd-\uffff";
+goog.i18n.bidi.rtlChars_ = "\u0591-\u06ef\u06fa-\u08ff\u200f\ud802-\ud803\ud83a-\ud83b\ufb1d-\ufdff\ufe70-\ufefc";
 goog.i18n.bidi.htmlSkipReg_ = /<[^>]*>|&[^;]+;/g;
 goog.i18n.bidi.stripHtmlIfNeeded_ = function(str, opt_isStripNeeded) {
   return opt_isStripNeeded ? str.replace(goog.i18n.bidi.htmlSkipReg_, "") : str;
@@ -2361,7 +2362,7 @@ goog.i18n.bidi.endsWithRtl = function(str, opt_isHtml) {
   return goog.i18n.bidi.rtlExitDirCheckRe_.test(goog.i18n.bidi.stripHtmlIfNeeded_(str, opt_isHtml));
 };
 goog.i18n.bidi.isRtlExitText = goog.i18n.bidi.endsWithRtl;
-goog.i18n.bidi.rtlLocalesRe_ = /^(ar|ckb|dv|he|iw|fa|nqo|ps|sd|ug|ur|yi|.*[-_](Arab|Hebr|Thaa|Nkoo|Tfng))(?!.*[-_](Latn|Cyrl)($|-|_))($|-|_)/i;
+goog.i18n.bidi.rtlLocalesRe_ = /^(ar|ckb|dv|he|iw|fa|nqo|ps|sd|ug|ur|yi|.*[-_](Adlm|Arab|Hebr|Nkoo|Rohg|Thaa))(?!.*[-_](Latn|Cyrl)($|-|_))($|-|_)/i;
 goog.i18n.bidi.isRtlLanguage = function(lang) {
   return goog.i18n.bidi.rtlLocalesRe_.test(lang);
 };
@@ -2436,18 +2437,9 @@ goog.html.TrustedResourceUrl.prototype.implementsGoogI18nBidiDirectionalString =
 goog.html.TrustedResourceUrl.prototype.getDirection = function() {
   return goog.i18n.bidi.Dir.LTR;
 };
-goog.html.TrustedResourceUrl.prototype.cloneWithParams = function(params) {
-  var url = goog.html.TrustedResourceUrl.unwrap(this);
-  if (/#/.test(url)) {
-    throw Error("Found a hash in url (" + url + "), appending not supported.");
-  }
-  var separator = /\?/.test(url) ? "&" : "?", key;
-  for (key in params) {
-    for (var values = goog.isArray(params[key]) ? params[key] : [params[key]], i = 0; i < values.length; i++) {
-      null != values[i] && (url += separator + encodeURIComponent(key) + "=" + encodeURIComponent(String(values[i])), separator = "&");
-    }
-  }
-  return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(url);
+goog.html.TrustedResourceUrl.prototype.cloneWithParams = function(searchParams, opt_hashParams) {
+  var url = goog.html.TrustedResourceUrl.unwrap(this), parts = goog.html.TrustedResourceUrl.URL_PARAM_PARSER_.exec(url), urlHash = parts[3] || "";
+  return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(parts[1] + goog.html.TrustedResourceUrl.stringifyParams_("?", parts[2] || "", searchParams) + goog.html.TrustedResourceUrl.stringifyParams_("#", urlHash, opt_hashParams));
 };
 goog.DEBUG && (goog.html.TrustedResourceUrl.prototype.toString = function() {
   return "TrustedResourceUrl{" + this.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_ + "}";
@@ -2475,8 +2467,9 @@ goog.html.TrustedResourceUrl.format = function(format, args) {
 };
 goog.html.TrustedResourceUrl.FORMAT_MARKER_ = /%{(\w+)}/g;
 goog.html.TrustedResourceUrl.BASE_URL_ = /^(?:https:)?\/\/[0-9a-z.:[\]-]+\/|^\/[^\/\\]|^about:blank#/i;
-goog.html.TrustedResourceUrl.formatWithParams = function(format, args, params) {
-  return goog.html.TrustedResourceUrl.format(format, args).cloneWithParams(params);
+goog.html.TrustedResourceUrl.URL_PARAM_PARSER_ = /^([^?#]*)(\?[^#]*)?(#[\s\S]*)?/;
+goog.html.TrustedResourceUrl.formatWithParams = function(format, args, searchParams, opt_hashParams) {
+  return goog.html.TrustedResourceUrl.format(format, args).cloneWithParams(searchParams, opt_hashParams);
 };
 goog.html.TrustedResourceUrl.fromConstant = function(url) {
   return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(goog.string.Const.unwrap(url));
@@ -2492,6 +2485,21 @@ goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessO
   var trustedResourceUrl = new goog.html.TrustedResourceUrl;
   trustedResourceUrl.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_ = url;
   return trustedResourceUrl;
+};
+goog.html.TrustedResourceUrl.stringifyParams_ = function(prefix, currentString, params) {
+  if (null == params) {
+    return currentString;
+  }
+  if (goog.isString(params)) {
+    return params ? prefix + encodeURIComponent(params) : "";
+  }
+  for (var key in params) {
+    for (var value = params[key], outputValues = goog.isArray(value) ? value : [value], i = 0; i < outputValues.length; i++) {
+      var outputValue = outputValues[i];
+      null != outputValue && (currentString || (currentString = prefix), currentString += (currentString.length > prefix.length ? "&" : "") + encodeURIComponent(key) + "=" + encodeURIComponent(String(outputValue)));
+    }
+  }
+  return currentString;
 };
 goog.html.SafeUrl = function() {
   this.privateDoNotAccessOrElseSafeHtmlWrappedValue_ = "";
@@ -2519,15 +2527,15 @@ goog.html.SafeUrl.unwrap = function(safeUrl) {
 goog.html.SafeUrl.fromConstant = function(url) {
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(goog.string.Const.unwrap(url));
 };
-goog.html.SAFE_MIME_TYPE_PATTERN_ = /^(?:audio\/(?:3gpp2|3gpp|aac|midi|mp3|mp4|mpeg|oga|ogg|opus|x-m4a|x-wav|wav|webm)|image\/(?:bmp|gif|jpeg|jpg|png|tiff|webp)|text\/csv|video\/(?:mpeg|mp4|ogg|webm|quicktime))$/i;
+goog.html.SAFE_MIME_TYPE_PATTERN_ = /^(?:audio\/(?:3gpp2|3gpp|aac|L16|midi|mp3|mp4|mpeg|oga|ogg|opus|x-m4a|x-wav|wav|webm)|image\/(?:bmp|gif|jpeg|jpg|png|tiff|webp)|text\/csv|video\/(?:mpeg|mp4|ogg|webm|quicktime))$/i;
 goog.html.SafeUrl.fromBlob = function(blob) {
   var url = goog.html.SAFE_MIME_TYPE_PATTERN_.test(blob.type) ? goog.fs.url.createObjectUrl(blob) : goog.html.SafeUrl.INNOCUOUS_STRING;
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
 goog.html.DATA_URL_PATTERN_ = /^data:([^;,]*);base64,[a-z0-9+\/]+=*$/i;
 goog.html.SafeUrl.fromDataUrl = function(dataUrl) {
-  var match = dataUrl.match(goog.html.DATA_URL_PATTERN_), valid = match && goog.html.SAFE_MIME_TYPE_PATTERN_.test(match[1]);
-  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(valid ? dataUrl : goog.html.SafeUrl.INNOCUOUS_STRING);
+  var filteredDataUrl = dataUrl.replace(/(%0A|%0D)/g, ""), match = filteredDataUrl.match(goog.html.DATA_URL_PATTERN_), valid = match && goog.html.SAFE_MIME_TYPE_PATTERN_.test(match[1]);
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(valid ? filteredDataUrl : goog.html.SafeUrl.INNOCUOUS_STRING);
 };
 goog.html.SafeUrl.fromTelUrl = function(telUrl) {
   goog.string.caseInsensitiveStartsWith(telUrl, "tel:") || (telUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
@@ -2538,11 +2546,17 @@ goog.html.SafeUrl.fromSipUrl = function(sipUrl) {
   goog.html.SIP_URL_PATTERN_.test(decodeURIComponent(sipUrl)) || (sipUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(sipUrl);
 };
+goog.html.SafeUrl.fromFacebookMessengerUrl = function(facebookMessengerUrl) {
+  goog.string.caseInsensitiveStartsWith(facebookMessengerUrl, "fb-messenger://share") || (facebookMessengerUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(facebookMessengerUrl);
+};
 goog.html.SafeUrl.fromSmsUrl = function(smsUrl) {
   goog.string.caseInsensitiveStartsWith(smsUrl, "sms:") && goog.html.SafeUrl.isSmsUrlBodyValid_(smsUrl) || (smsUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(smsUrl);
 };
 goog.html.SafeUrl.isSmsUrlBodyValid_ = function(smsUrl) {
+  var hash = smsUrl.indexOf("#");
+  0 < hash && (smsUrl = smsUrl.substring(0, hash));
   var bodyParams = smsUrl.match(/[?&]body=/gi);
   if (!bodyParams) {
     return !0;
@@ -2550,20 +2564,43 @@ goog.html.SafeUrl.isSmsUrlBodyValid_ = function(smsUrl) {
   if (1 < bodyParams.length) {
     return !1;
   }
-  var bodyValue = smsUrl.match(/[?&]body=([^&]+)/)[1];
+  var bodyValue = smsUrl.match(/[?&]body=([^&]*)/)[1];
   if (!bodyValue) {
     return !0;
   }
   try {
-    return goog.string.urlEncode(bodyValue) === bodyValue || goog.string.urlDecode(bodyValue) !== bodyValue;
+    decodeURIComponent(bodyValue);
   } catch (error) {
     return !1;
   }
+  return /^(?:[a-z0-9\-_.~]|%[0-9a-f]{2})+$/i.test(bodyValue);
+};
+goog.html.SafeUrl.sanitizeChromeExtensionUrl = function(url, extensionId) {
+  return goog.html.SafeUrl.sanitizeExtensionUrl_(/^chrome-extension:\/\/([^\/]+)\//, url, extensionId);
+};
+goog.html.SafeUrl.sanitizeFirefoxExtensionUrl = function(url, extensionId) {
+  return goog.html.SafeUrl.sanitizeExtensionUrl_(/^moz-extension:\/\/([^\/]+)\//, url, extensionId);
+};
+goog.html.SafeUrl.sanitizeEdgeExtensionUrl = function(url, extensionId) {
+  return goog.html.SafeUrl.sanitizeExtensionUrl_(/^ms-browser-extension:\/\/([^\/]+)\//, url, extensionId);
+};
+goog.html.SafeUrl.sanitizeExtensionUrl_ = function(scheme, url, extensionId) {
+  var matches = scheme.exec(url);
+  if (matches) {
+    var extractedExtensionId = matches[1];
+    -1 == (extensionId instanceof goog.string.Const ? [goog.string.Const.unwrap(extensionId)] : extensionId.map(function(x) {
+      return goog.string.Const.unwrap(x);
+    })).indexOf(extractedExtensionId) && (url = goog.html.SafeUrl.INNOCUOUS_STRING);
+  } else {
+    url = goog.html.SafeUrl.INNOCUOUS_STRING;
+  }
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
 goog.html.SafeUrl.fromTrustedResourceUrl = function(trustedResourceUrl) {
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(goog.html.TrustedResourceUrl.unwrap(trustedResourceUrl));
 };
 goog.html.SAFE_URL_PATTERN_ = /^(?:(?:https?|mailto|ftp):|[^:/?#]*(?:[/?#]|$))/i;
+goog.html.SafeUrl.SAFE_URL_PATTERN = goog.html.SAFE_URL_PATTERN_;
 goog.html.SafeUrl.sanitize = function(url) {
   if (url instanceof goog.html.SafeUrl) {
     return url;
@@ -2577,7 +2614,7 @@ goog.html.SafeUrl.sanitizeAssertUnchanged = function(url) {
     return url;
   }
   url = "object" == typeof url && url.implementsGoogStringTypedString ? url.getTypedStringValue() : String(url);
-  goog.asserts.assert(goog.html.SAFE_URL_PATTERN_.test(url)) || (url = goog.html.SafeUrl.INNOCUOUS_STRING);
+  goog.asserts.assert(goog.html.SAFE_URL_PATTERN_.test(url), "%s does not match the safe URL pattern", url) || (url = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
 goog.html.SafeUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
@@ -3188,8 +3225,9 @@ unwrap:goog.html.SafeStyle.unwrap}, URL:{typeToUnwrap:goog.html.SafeUrl, unwrap:
 security.polymer_resin.closure_bridge.disallow_ = function(value, fallback) {
   return fallback;
 };
-security.polymer_resin.closure_bridge.FILTERS_ = {CONSTANT:security.polymer_resin.closure_bridge.disallow_, JAVASCRIPT:security.polymer_resin.closure_bridge.disallow_, HTML:goog.string.htmlEscape, RESOURCE_URL:security.polymer_resin.closure_bridge.disallow_, STRING:String, STYLE:security.polymer_resin.closure_bridge.disallow_, URL:function(value) {
-  return goog.html.SafeUrl.sanitize(value).getTypedStringValue();
+security.polymer_resin.closure_bridge.FILTERS_ = {CONSTANT:security.polymer_resin.closure_bridge.disallow_, JAVASCRIPT:security.polymer_resin.closure_bridge.disallow_, HTML:goog.string.htmlEscape, RESOURCE_URL:security.polymer_resin.closure_bridge.disallow_, STRING:String, STYLE:security.polymer_resin.closure_bridge.disallow_, URL:function(value, fallback) {
+  var safeValue = goog.html.SafeUrl.sanitize(value).getTypedStringValue();
+  return safeValue === goog.html.SafeUrl.INNOCUOUS_STRING ? fallback : safeValue;
 }};
 security.polymer_resin.closure_bridge.safeTypesBridge = function(value, type, fallback) {
   var unwrapper = security.polymer_resin.closure_bridge.UNWRAPPERS_[type];

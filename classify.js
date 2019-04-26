@@ -29,7 +29,7 @@ goog.provide('security.polymer_resin.hintUsesDeprecatedRegisterElement');
  *
  * <p>This does not have a value for customized builtin elements.
  * Customized builtin elements are classified as builtin elements and clients
- * should look for the presence of an {@code is="..."} property if they need to
+ * should look for the presence of an `is="..."` property if they need to
  * distinguish between customized and non-customized builtin elements.
  *
  * @enum{number}
@@ -148,7 +148,7 @@ security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_ = new RegExp(
  * @param {!Function} ctor the element's constructor or a super-type
  *     constructor.  Calling with a super-type of HTMLElement leads
  *     to unreliable results.
- * @return {security.polymer_resin.CustomElementClassification}
+ * @return {!security.polymer_resin.CustomElementClassification}
  */
 security.polymer_resin.classifyElement = function (name, ctor) {
   // TODO: are elements from a different document dealt with by that
@@ -161,7 +161,7 @@ security.polymer_resin.classifyElement = function (name, ctor) {
 
   if (security.polymer_resin.usePolymerTelemetry_) {
     // Make sure we have all the registered custom elements.
-    var regs = Polymer.telemetry.registrations;
+    var regs = window['Polymer']['telemetry']['registrations'];
     var n = regs.length;
     for (var i = security.polymer_resin.countPolymerTelemetryUnrolled_;
          i < n; ++i) {

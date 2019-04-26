@@ -37,7 +37,8 @@ goog.require('goog.string.TypedString');
  * @define {boolean} whether bundled with its dependencies while
  *     exporting its public API.
  */
-goog.define('security.polymer_resin.closure_bridge.STANDALONE', false);
+security.polymer_resin.closure_bridge.STANDALONE =
+    goog.define('security.polymer_resin.closure_bridge.STANDALONE', false);
 
 /**
  * @typedef {{typeToUnwrap: !Function, unwrap: !Function}}
@@ -51,7 +52,7 @@ security.polymer_resin.closure_bridge.filter;
 
 /**
  * Unwraps any typed string input.
- * @param {*} value A value that might be a typed string.
+ * @param {?} value A value that might be a typed string.
  * @return {?} the content if value is a wrapped string, or value otherwise.
  * @private
  */
@@ -61,6 +62,7 @@ security.polymer_resin.closure_bridge.unwrapString_ = function (value) {
         .getTypedStringValue()
       : value;
 };
+
 /**
  * @type {!Object<string, !security.polymer_resin.closure_bridge.unwrapper>}
  * @private
@@ -144,11 +146,16 @@ security.polymer_resin.closure_bridge.FILTERS_ = {
       /**
        * Allows safe URLs through, but rejects unsafe ones.
        * @param {string} value attribute value
-       * @return {string}
+       * @param {*} fallback returned if value is rejected as unsafe.
+       * @return {?}
        */
-      function allowSafeUrl(value) {
+      function allowSafeUrl(value, fallback) {
         // TODO: Can we do without creating a SafeUrl instance?
-        return goog.html.SafeUrl.sanitize(value).getTypedStringValue();
+        var safeValue = goog.html.SafeUrl.sanitize(value).getTypedStringValue();
+        if (safeValue === goog.html.SafeUrl.INNOCUOUS_STRING) {
+          return fallback;
+        }
+        return safeValue;
       })
 };
 

@@ -17,6 +17,19 @@ goog.provide('a_tag_tests');
 goog.require('goog.html.SafeUrl');
 goog.require('goog.string.Const');
 
+/**
+ * An array with the same set of elements as the input but whose values are
+ * lexicographically ordered and unique.
+ * @param {!Array.<string>} arr
+ * @return {!Array.<string>}
+ */
+function uniq(arr) {
+  return arr.slice().sort().filter(
+      function (element, index, array) {
+        return index === 0 || element !== array[index - 1];
+      });
+}
+
 suite(
     'ATagtests',
 
@@ -25,6 +38,14 @@ suite(
 
       setup(function () {
         toCheck = fixture('a-tag-tests');
+      });
+
+      teardown(function () {
+        var reports = uniq(
+            document.getElementById('resin-reports').textContent.split('\n'));
+        assert.equal(
+            'Failed to sanitize attribute of <a>: <a href="javascript:doEvil()">',
+            reports.join('\n').replace(/^\n+|\n+$/g, ''));
       });
 
       function getA(id) {
