@@ -1,17 +1,19 @@
 'use strict';var $jscomp = $jscomp || {};
 $jscomp.scope = {};
-$jscomp.checkStringArgs = function(thisArg, arg, func) {
-  if (null == thisArg) {
-    throw new TypeError("The 'this' value for String.prototype." + func + " must not be null or undefined");
+$jscomp.findInternal = function(array, callback, thisArg) {
+  array instanceof String && (array = String(array));
+  for (var len = array.length, i = 0; i < len; i++) {
+    var value = array[i];
+    if (callback.call(thisArg, value, i, array)) {
+      return {i:i, v:value};
+    }
   }
-  if (arg instanceof RegExp) {
-    throw new TypeError("First argument to String.prototype." + func + " must not be a regular expression");
-  }
-  return thisArg + "";
+  return {i:-1, v:void 0};
 };
 $jscomp.ASSUME_ES5 = !1;
 $jscomp.ASSUME_NO_NATIVE_MAP = !1;
 $jscomp.ASSUME_NO_NATIVE_SET = !1;
+$jscomp.SIMPLE_FROUND_POLYFILL = !1;
 $jscomp.defineProperty = $jscomp.ASSUME_ES5 || "function" == typeof Object.defineProperties ? Object.defineProperty : function(target, property, descriptor) {
   target != Array.prototype && target != Object.prototype && (target[property] = descriptor.value);
 };
@@ -30,18 +32,32 @@ $jscomp.polyfill = function(target, polyfill) {
     impl != orig && null != impl && $jscomp.defineProperty(obj, property, {configurable:!0, writable:!0, value:impl});
   }
 };
-$jscomp.findInternal = function(array, callback, thisArg) {
-  array instanceof String && (array = String(array));
-  for (var len = array.length, i = 0; i < len; i++) {
-    var value = array[i];
-    if (callback.call(thisArg, value, i, array)) {
-      return {i:i, v:value};
-    }
+$jscomp.checkStringArgs = function(thisArg, arg, func) {
+  if (null == thisArg) {
+    throw new TypeError("The 'this' value for String.prototype." + func + " must not be null or undefined");
   }
-  return {i:-1, v:void 0};
+  if (arg instanceof RegExp) {
+    throw new TypeError("First argument to String.prototype." + func + " must not be a regular expression");
+  }
+  return thisArg + "";
 };
+$jscomp.polyfill("String.prototype.repeat", function(orig) {
+  return orig ? orig : function(copies) {
+    var string = $jscomp.checkStringArgs(this, null, "repeat");
+    if (0 > copies || 1342177279 < copies) {
+      throw new RangeError("Invalid count value");
+    }
+    copies |= 0;
+    for (var result = ""; copies;) {
+      if (copies & 1 && (result += string), copies >>>= 1) {
+        string += string;
+      }
+    }
+    return result;
+  };
+}, "es6", "es3");
 var goog = goog || {};
-goog.global = this;
+goog.global = this || self;
 goog.isDef = function(val) {
   return void 0 !== val;
 };
@@ -63,7 +79,9 @@ goog.exportPath_ = function(name, opt_object, opt_objectToExportTo) {
 };
 goog.define = function(name, defaultValue) {
   goog.exportPath_(name, defaultValue);
+  return defaultValue;
 };
+goog.FEATURESET_YEAR = 2012;
 goog.DEBUG = !0;
 goog.LOCALE = "en";
 goog.TRUSTED_SITE = !0;
@@ -147,7 +165,6 @@ goog.declareModuleId = function(namespace) {
     goog.loadedModules_[namespace] = {exports:exports, type:goog.ModuleType.ES6, moduleId:namespace};
   }
 };
-goog.module.declareNamespace = goog.declareModuleId;
 goog.setTestOnly = function(opt_message) {
   if (goog.DISALLOW_TEST_ONLY_CODE) {
     throw opt_message = opt_message || "", Error("Importing test-only code into non-debug environment" + (opt_message ? ": " + opt_message : "."));
@@ -203,6 +220,7 @@ goog.SEAL_MODULE_EXPORTS = goog.DEBUG;
 goog.loadedModules_ = {};
 goog.DEPENDENCIES_ENABLED = !1;
 goog.TRANSPILE = "detect";
+goog.ASSUME_ES_MODULES_TRANSPILED = !1;
 goog.TRANSPILE_TO_LANGUAGE = "";
 goog.TRANSPILER = "transpile.js";
 goog.hasBadLetScoping = null;
@@ -274,7 +292,7 @@ goog.transpile_ = function(code$jscomp$0, path$jscomp$0, target) {
     var transpilerPath = goog.basePath + goog.TRANSPILER, transpilerCode = goog.loadFileSync_(transpilerPath);
     if (transpilerCode) {
       (function() {
-        eval(transpilerCode + "\n//# sourceURL=" + transpilerPath);
+        (0,eval)(transpilerCode + "\n//# sourceURL=" + transpilerPath);
       }).call(goog.global);
       if (goog.global.$gwtExport && goog.global.$gwtExport.$jscomp && !goog.global.$gwtExport.$jscomp.transpile) {
         throw Error('The transpiler did not properly export the "transpile" method. $gwtExport: ' + JSON.stringify(goog.global.$gwtExport));
@@ -522,12 +540,12 @@ goog.base = function(me, opt_methodName, var_args) {
   for (i = 2; i < arguments.length; i++) {
     args[i - 2] = arguments[i];
   }
-  for (var foundCaller = !1, ctor = me.constructor; ctor; ctor = ctor.superClass_ && ctor.superClass_.constructor) {
-    if (ctor.prototype[opt_methodName] === caller) {
+  for (var foundCaller = !1, proto = me.constructor.prototype; proto; proto = Object.getPrototypeOf(proto)) {
+    if (proto[opt_methodName] === caller) {
       foundCaller = !0;
     } else {
       if (foundCaller) {
-        return ctor.prototype[opt_methodName].apply(me, args);
+        return proto[opt_methodName].apply(me, args);
       }
     }
   }
@@ -583,960 +601,23 @@ goog.defineClass.applyProperties_ = function(target, source) {
 goog.tagUnsealableClass = function() {
 };
 goog.UNSEALABLE_CONSTRUCTOR_PROPERTY_ = "goog_defineClass_legacy_unsealable";
-goog.object = {};
-goog.object.is = function(v, v2) {
-  return v === v2 ? 0 !== v || 1 / v === 1 / v2 : v !== v && v2 !== v2;
+goog.TRUSTED_TYPES_POLICY_NAME = "";
+goog.identity_ = function(s) {
+  return s;
 };
-goog.object.forEach = function(obj, f, opt_obj) {
-  for (var key in obj) {
-    f.call(opt_obj, obj[key], key, obj);
+goog.createTrustedTypesPolicy = function(name) {
+  var policy = null;
+  if ("undefined" === typeof TrustedTypes || !TrustedTypes.createPolicy) {
+    return policy;
   }
-};
-goog.object.filter = function(obj, f, opt_obj) {
-  var res = {}, key;
-  for (key in obj) {
-    f.call(opt_obj, obj[key], key, obj) && (res[key] = obj[key]);
+  try {
+    policy = TrustedTypes.createPolicy(name, {createHTML:goog.identity_, createScript:goog.identity_, createScriptURL:goog.identity_, createURL:goog.identity_});
+  } catch (e) {
+    goog.logToConsole_(e.message);
   }
-  return res;
+  return policy;
 };
-goog.object.map = function(obj, f, opt_obj) {
-  var res = {}, key;
-  for (key in obj) {
-    res[key] = f.call(opt_obj, obj[key], key, obj);
-  }
-  return res;
-};
-goog.object.some = function(obj, f, opt_obj) {
-  for (var key in obj) {
-    if (f.call(opt_obj, obj[key], key, obj)) {
-      return !0;
-    }
-  }
-  return !1;
-};
-goog.object.every = function(obj, f, opt_obj) {
-  for (var key in obj) {
-    if (!f.call(opt_obj, obj[key], key, obj)) {
-      return !1;
-    }
-  }
-  return !0;
-};
-goog.object.getCount = function(obj) {
-  var rv = 0, key;
-  for (key in obj) {
-    rv++;
-  }
-  return rv;
-};
-goog.object.getAnyKey = function(obj) {
-  for (var key in obj) {
-    return key;
-  }
-};
-goog.object.getAnyValue = function(obj) {
-  for (var key in obj) {
-    return obj[key];
-  }
-};
-goog.object.contains = function(obj, val) {
-  return goog.object.containsValue(obj, val);
-};
-goog.object.getValues = function(obj) {
-  var res = [], i = 0, key;
-  for (key in obj) {
-    res[i++] = obj[key];
-  }
-  return res;
-};
-goog.object.getKeys = function(obj) {
-  var res = [], i = 0, key;
-  for (key in obj) {
-    res[i++] = key;
-  }
-  return res;
-};
-goog.object.getValueByKeys = function(obj, var_args) {
-  for (var isArrayLike = goog.isArrayLike(var_args), keys = isArrayLike ? var_args : arguments, i = isArrayLike ? 0 : 1; i < keys.length; i++) {
-    if (null == obj) {
-      return;
-    }
-    obj = obj[keys[i]];
-  }
-  return obj;
-};
-goog.object.containsKey = function(obj, key) {
-  return null !== obj && key in obj;
-};
-goog.object.containsValue = function(obj, val) {
-  for (var key in obj) {
-    if (obj[key] == val) {
-      return !0;
-    }
-  }
-  return !1;
-};
-goog.object.findKey = function(obj, f, opt_this) {
-  for (var key in obj) {
-    if (f.call(opt_this, obj[key], key, obj)) {
-      return key;
-    }
-  }
-};
-goog.object.findValue = function(obj, f, opt_this) {
-  var key = goog.object.findKey(obj, f, opt_this);
-  return key && obj[key];
-};
-goog.object.isEmpty = function(obj) {
-  for (var key in obj) {
-    return !1;
-  }
-  return !0;
-};
-goog.object.clear = function(obj) {
-  for (var i in obj) {
-    delete obj[i];
-  }
-};
-goog.object.remove = function(obj, key) {
-  var rv;
-  (rv = key in obj) && delete obj[key];
-  return rv;
-};
-goog.object.add = function(obj, key, val) {
-  if (null !== obj && key in obj) {
-    throw Error('The object already contains the key "' + key + '"');
-  }
-  goog.object.set(obj, key, val);
-};
-goog.object.get = function(obj, key, opt_val) {
-  return null !== obj && key in obj ? obj[key] : opt_val;
-};
-goog.object.set = function(obj, key, value) {
-  obj[key] = value;
-};
-goog.object.setIfUndefined = function(obj, key, value) {
-  return key in obj ? obj[key] : obj[key] = value;
-};
-goog.object.setWithReturnValueIfNotSet = function(obj, key, f) {
-  if (key in obj) {
-    return obj[key];
-  }
-  var val = f();
-  return obj[key] = val;
-};
-goog.object.equals = function(a, b) {
-  for (var k in a) {
-    if (!(k in b) || a[k] !== b[k]) {
-      return !1;
-    }
-  }
-  for (k in b) {
-    if (!(k in a)) {
-      return !1;
-    }
-  }
-  return !0;
-};
-goog.object.clone = function(obj) {
-  var res = {}, key;
-  for (key in obj) {
-    res[key] = obj[key];
-  }
-  return res;
-};
-goog.object.unsafeClone = function(obj) {
-  var type = goog.typeOf(obj);
-  if ("object" == type || "array" == type) {
-    if (goog.isFunction(obj.clone)) {
-      return obj.clone();
-    }
-    var clone = "array" == type ? [] : {}, key;
-    for (key in obj) {
-      clone[key] = goog.object.unsafeClone(obj[key]);
-    }
-    return clone;
-  }
-  return obj;
-};
-goog.object.transpose = function(obj) {
-  var transposed = {}, key;
-  for (key in obj) {
-    transposed[obj[key]] = key;
-  }
-  return transposed;
-};
-goog.object.PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
-goog.object.extend = function(target, var_args) {
-  for (var key, source, i = 1; i < arguments.length; i++) {
-    source = arguments[i];
-    for (key in source) {
-      target[key] = source[key];
-    }
-    for (var j = 0; j < goog.object.PROTOTYPE_FIELDS_.length; j++) {
-      key = goog.object.PROTOTYPE_FIELDS_[j], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
-    }
-  }
-};
-goog.object.create = function(var_args) {
-  var argLength = arguments.length;
-  if (1 == argLength && goog.isArray(arguments[0])) {
-    return goog.object.create.apply(null, arguments[0]);
-  }
-  if (argLength % 2) {
-    throw Error("Uneven number of arguments");
-  }
-  for (var rv = {}, i = 0; i < argLength; i += 2) {
-    rv[arguments[i]] = arguments[i + 1];
-  }
-  return rv;
-};
-goog.object.createSet = function(var_args) {
-  var argLength = arguments.length;
-  if (1 == argLength && goog.isArray(arguments[0])) {
-    return goog.object.createSet.apply(null, arguments[0]);
-  }
-  for (var rv = {}, i = 0; i < argLength; i++) {
-    rv[arguments[i]] = !0;
-  }
-  return rv;
-};
-goog.object.createImmutableView = function(obj) {
-  var result = obj;
-  Object.isFrozen && !Object.isFrozen(obj) && (result = Object.create(obj), Object.freeze(result));
-  return result;
-};
-goog.object.isImmutableView = function(obj) {
-  return !!Object.isFrozen && Object.isFrozen(obj);
-};
-goog.object.getAllPropertyNames = function(obj, opt_includeObjectPrototype, opt_includeFunctionPrototype) {
-  if (!obj) {
-    return [];
-  }
-  if (!Object.getOwnPropertyNames || !Object.getPrototypeOf) {
-    return goog.object.getKeys(obj);
-  }
-  for (var visitedSet = {}, proto = obj; proto && (proto !== Object.prototype || opt_includeObjectPrototype) && (proto !== Function.prototype || opt_includeFunctionPrototype);) {
-    for (var names = Object.getOwnPropertyNames(proto), i = 0; i < names.length; i++) {
-      visitedSet[names[i]] = !0;
-    }
-    proto = Object.getPrototypeOf(proto);
-  }
-  return goog.object.getKeys(visitedSet);
-};
-goog.string = {};
-goog.string.DETECT_DOUBLE_ESCAPING = !1;
-goog.string.FORCE_NON_DOM_HTML_UNESCAPING = !1;
-goog.string.Unicode = {NBSP:"\u00a0"};
-goog.string.startsWith = function(str, prefix) {
-  return 0 == str.lastIndexOf(prefix, 0);
-};
-goog.string.endsWith = function(str, suffix) {
-  var l = str.length - suffix.length;
-  return 0 <= l && str.indexOf(suffix, l) == l;
-};
-goog.string.caseInsensitiveStartsWith = function(str, prefix) {
-  return 0 == goog.string.caseInsensitiveCompare(prefix, str.substr(0, prefix.length));
-};
-goog.string.caseInsensitiveEndsWith = function(str, suffix) {
-  return 0 == goog.string.caseInsensitiveCompare(suffix, str.substr(str.length - suffix.length, suffix.length));
-};
-goog.string.caseInsensitiveEquals = function(str1, str2) {
-  return str1.toLowerCase() == str2.toLowerCase();
-};
-goog.string.subs = function(str, var_args) {
-  for (var splitParts = str.split("%s"), returnString = "", subsArguments = Array.prototype.slice.call(arguments, 1); subsArguments.length && 1 < splitParts.length;) {
-    returnString += splitParts.shift() + subsArguments.shift();
-  }
-  return returnString + splitParts.join("%s");
-};
-goog.string.collapseWhitespace = function(str) {
-  return str.replace(/[\s\xa0]+/g, " ").replace(/^\s+|\s+$/g, "");
-};
-goog.string.isEmptyOrWhitespace = function(str) {
-  return /^[\s\xa0]*$/.test(str);
-};
-goog.string.isEmptyString = function(str) {
-  return 0 == str.length;
-};
-goog.string.isEmpty = goog.string.isEmptyOrWhitespace;
-goog.string.isEmptyOrWhitespaceSafe = function(str) {
-  return goog.string.isEmptyOrWhitespace(goog.string.makeSafe(str));
-};
-goog.string.isEmptySafe = goog.string.isEmptyOrWhitespaceSafe;
-goog.string.isBreakingWhitespace = function(str) {
-  return !/[^\t\n\r ]/.test(str);
-};
-goog.string.isAlpha = function(str) {
-  return !/[^a-zA-Z]/.test(str);
-};
-goog.string.isNumeric = function(str) {
-  return !/[^0-9]/.test(str);
-};
-goog.string.isAlphaNumeric = function(str) {
-  return !/[^a-zA-Z0-9]/.test(str);
-};
-goog.string.isSpace = function(ch) {
-  return " " == ch;
-};
-goog.string.isUnicodeChar = function(ch) {
-  return 1 == ch.length && " " <= ch && "~" >= ch || "\u0080" <= ch && "\ufffd" >= ch;
-};
-goog.string.stripNewlines = function(str) {
-  return str.replace(/(\r\n|\r|\n)+/g, " ");
-};
-goog.string.canonicalizeNewlines = function(str) {
-  return str.replace(/(\r\n|\r|\n)/g, "\n");
-};
-goog.string.normalizeWhitespace = function(str) {
-  return str.replace(/\xa0|\s/g, " ");
-};
-goog.string.normalizeSpaces = function(str) {
-  return str.replace(/\xa0|[ \t]+/g, " ");
-};
-goog.string.collapseBreakingSpaces = function(str) {
-  return str.replace(/[\t\r\n ]+/g, " ").replace(/^[\t\r\n ]+|[\t\r\n ]+$/g, "");
-};
-goog.string.trim = goog.TRUSTED_SITE && String.prototype.trim ? function(str) {
-  return str.trim();
-} : function(str) {
-  return /^[\s\xa0]*([\s\S]*?)[\s\xa0]*$/.exec(str)[1];
-};
-goog.string.trimLeft = function(str) {
-  return str.replace(/^[\s\xa0]+/, "");
-};
-goog.string.trimRight = function(str) {
-  return str.replace(/[\s\xa0]+$/, "");
-};
-goog.string.caseInsensitiveCompare = function(str1, str2) {
-  var test1 = String(str1).toLowerCase(), test2 = String(str2).toLowerCase();
-  return test1 < test2 ? -1 : test1 == test2 ? 0 : 1;
-};
-goog.string.numberAwareCompare_ = function(str1, str2, tokenizerRegExp) {
-  if (str1 == str2) {
-    return 0;
-  }
-  if (!str1) {
-    return -1;
-  }
-  if (!str2) {
-    return 1;
-  }
-  for (var tokens1 = str1.toLowerCase().match(tokenizerRegExp), tokens2 = str2.toLowerCase().match(tokenizerRegExp), count = Math.min(tokens1.length, tokens2.length), i = 0; i < count; i++) {
-    var a = tokens1[i], b = tokens2[i];
-    if (a != b) {
-      var num1 = parseInt(a, 10);
-      if (!isNaN(num1)) {
-        var num2 = parseInt(b, 10);
-        if (!isNaN(num2) && num1 - num2) {
-          return num1 - num2;
-        }
-      }
-      return a < b ? -1 : 1;
-    }
-  }
-  return tokens1.length != tokens2.length ? tokens1.length - tokens2.length : str1 < str2 ? -1 : 1;
-};
-goog.string.intAwareCompare = function(str1, str2) {
-  return goog.string.numberAwareCompare_(str1, str2, /\d+|\D+/g);
-};
-goog.string.floatAwareCompare = function(str1, str2) {
-  return goog.string.numberAwareCompare_(str1, str2, /\d+|\.\d+|\D+/g);
-};
-goog.string.numerateCompare = goog.string.floatAwareCompare;
-goog.string.urlEncode = function(str) {
-  return encodeURIComponent(String(str));
-};
-goog.string.urlDecode = function(str) {
-  return decodeURIComponent(str.replace(/\+/g, " "));
-};
-goog.string.newLineToBr = function(str, opt_xml) {
-  return str.replace(/(\r\n|\r|\n)/g, opt_xml ? "<br />" : "<br>");
-};
-goog.string.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
-  if (opt_isLikelyToContainHtmlChars) {
-    str = str.replace(goog.string.AMP_RE_, "&amp;").replace(goog.string.LT_RE_, "&lt;").replace(goog.string.GT_RE_, "&gt;").replace(goog.string.QUOT_RE_, "&quot;").replace(goog.string.SINGLE_QUOTE_RE_, "&#39;").replace(goog.string.NULL_RE_, "&#0;"), goog.string.DETECT_DOUBLE_ESCAPING && (str = str.replace(goog.string.E_RE_, "&#101;"));
-  } else {
-    if (!goog.string.ALL_RE_.test(str)) {
-      return str;
-    }
-    -1 != str.indexOf("&") && (str = str.replace(goog.string.AMP_RE_, "&amp;"));
-    -1 != str.indexOf("<") && (str = str.replace(goog.string.LT_RE_, "&lt;"));
-    -1 != str.indexOf(">") && (str = str.replace(goog.string.GT_RE_, "&gt;"));
-    -1 != str.indexOf('"') && (str = str.replace(goog.string.QUOT_RE_, "&quot;"));
-    -1 != str.indexOf("'") && (str = str.replace(goog.string.SINGLE_QUOTE_RE_, "&#39;"));
-    -1 != str.indexOf("\x00") && (str = str.replace(goog.string.NULL_RE_, "&#0;"));
-    goog.string.DETECT_DOUBLE_ESCAPING && -1 != str.indexOf("e") && (str = str.replace(goog.string.E_RE_, "&#101;"));
-  }
-  return str;
-};
-goog.string.AMP_RE_ = /&/g;
-goog.string.LT_RE_ = /</g;
-goog.string.GT_RE_ = />/g;
-goog.string.QUOT_RE_ = /"/g;
-goog.string.SINGLE_QUOTE_RE_ = /'/g;
-goog.string.NULL_RE_ = /\x00/g;
-goog.string.E_RE_ = /e/g;
-goog.string.ALL_RE_ = goog.string.DETECT_DOUBLE_ESCAPING ? /[\x00&<>"'e]/ : /[\x00&<>"']/;
-goog.string.unescapeEntities = function(str) {
-  return goog.string.contains(str, "&") ? !goog.string.FORCE_NON_DOM_HTML_UNESCAPING && "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(str) : goog.string.unescapePureXmlEntities_(str) : str;
-};
-goog.string.unescapeEntitiesWithDocument = function(str, document) {
-  return goog.string.contains(str, "&") ? goog.string.unescapeEntitiesUsingDom_(str, document) : str;
-};
-goog.string.unescapeEntitiesUsingDom_ = function(str, opt_document) {
-  var seen = {"&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"'};
-  var div = opt_document ? opt_document.createElement("div") : goog.global.document.createElement("div");
-  return str.replace(goog.string.HTML_ENTITY_PATTERN_, function(s, entity) {
-    var value = seen[s];
-    if (value) {
-      return value;
-    }
-    if ("#" == entity.charAt(0)) {
-      var n = Number("0" + entity.substr(1));
-      isNaN(n) || (value = String.fromCharCode(n));
-    }
-    value || (div.innerHTML = s + " ", value = div.firstChild.nodeValue.slice(0, -1));
-    return seen[s] = value;
-  });
-};
-goog.string.unescapePureXmlEntities_ = function(str) {
-  return str.replace(/&([^;]+);/g, function(s, entity) {
-    switch(entity) {
-      case "amp":
-        return "&";
-      case "lt":
-        return "<";
-      case "gt":
-        return ">";
-      case "quot":
-        return '"';
-      default:
-        if ("#" == entity.charAt(0)) {
-          var n = Number("0" + entity.substr(1));
-          if (!isNaN(n)) {
-            return String.fromCharCode(n);
-          }
-        }
-        return s;
-    }
-  });
-};
-goog.string.HTML_ENTITY_PATTERN_ = /&([^;\s<&]+);?/g;
-goog.string.whitespaceEscape = function(str, opt_xml) {
-  return goog.string.newLineToBr(str.replace(/  /g, " &#160;"), opt_xml);
-};
-goog.string.preserveSpaces = function(str) {
-  return str.replace(/(^|[\n ]) /g, "$1" + goog.string.Unicode.NBSP);
-};
-goog.string.stripQuotes = function(str, quoteChars) {
-  for (var length = quoteChars.length, i = 0; i < length; i++) {
-    var quoteChar = 1 == length ? quoteChars : quoteChars.charAt(i);
-    if (str.charAt(0) == quoteChar && str.charAt(str.length - 1) == quoteChar) {
-      return str.substring(1, str.length - 1);
-    }
-  }
-  return str;
-};
-goog.string.truncate = function(str, chars, opt_protectEscapedCharacters) {
-  opt_protectEscapedCharacters && (str = goog.string.unescapeEntities(str));
-  str.length > chars && (str = str.substring(0, chars - 3) + "...");
-  opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
-  return str;
-};
-goog.string.truncateMiddle = function(str, chars, opt_protectEscapedCharacters, opt_trailingChars) {
-  opt_protectEscapedCharacters && (str = goog.string.unescapeEntities(str));
-  if (opt_trailingChars && str.length > chars) {
-    opt_trailingChars > chars && (opt_trailingChars = chars), str = str.substring(0, chars - opt_trailingChars) + "..." + str.substring(str.length - opt_trailingChars);
-  } else {
-    if (str.length > chars) {
-      var half = Math.floor(chars / 2);
-      str = str.substring(0, half + chars % 2) + "..." + str.substring(str.length - half);
-    }
-  }
-  opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
-  return str;
-};
-goog.string.specialEscapeChars_ = {"\x00":"\\0", "\b":"\\b", "\f":"\\f", "\n":"\\n", "\r":"\\r", "\t":"\\t", "\x0B":"\\x0B", '"':'\\"', "\\":"\\\\", "<":"<"};
-goog.string.jsEscapeCache_ = {"'":"\\'"};
-goog.string.quote = function(s) {
-  s = String(s);
-  for (var sb = ['"'], i = 0; i < s.length; i++) {
-    var ch = s.charAt(i), cc = ch.charCodeAt(0);
-    sb[i + 1] = goog.string.specialEscapeChars_[ch] || (31 < cc && 127 > cc ? ch : goog.string.escapeChar(ch));
-  }
-  sb.push('"');
-  return sb.join("");
-};
-goog.string.escapeString = function(str) {
-  for (var sb = [], i = 0; i < str.length; i++) {
-    sb[i] = goog.string.escapeChar(str.charAt(i));
-  }
-  return sb.join("");
-};
-goog.string.escapeChar = function(c) {
-  if (c in goog.string.jsEscapeCache_) {
-    return goog.string.jsEscapeCache_[c];
-  }
-  if (c in goog.string.specialEscapeChars_) {
-    return goog.string.jsEscapeCache_[c] = goog.string.specialEscapeChars_[c];
-  }
-  var cc = c.charCodeAt(0);
-  if (31 < cc && 127 > cc) {
-    var rv = c;
-  } else {
-    if (256 > cc) {
-      if (rv = "\\x", 16 > cc || 256 < cc) {
-        rv += "0";
-      }
-    } else {
-      rv = "\\u", 4096 > cc && (rv += "0");
-    }
-    rv += cc.toString(16).toUpperCase();
-  }
-  return goog.string.jsEscapeCache_[c] = rv;
-};
-goog.string.contains = function(str, subString) {
-  return -1 != str.indexOf(subString);
-};
-goog.string.caseInsensitiveContains = function(str, subString) {
-  return goog.string.contains(str.toLowerCase(), subString.toLowerCase());
-};
-goog.string.countOf = function(s, ss) {
-  return s && ss ? s.split(ss).length - 1 : 0;
-};
-goog.string.removeAt = function(s, index, stringLength) {
-  var resultStr = s;
-  0 <= index && index < s.length && 0 < stringLength && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
-  return resultStr;
-};
-goog.string.remove = function(str, substr) {
-  return str.replace(substr, "");
-};
-goog.string.removeAll = function(s, ss) {
-  var re = new RegExp(goog.string.regExpEscape(ss), "g");
-  return s.replace(re, "");
-};
-goog.string.replaceAll = function(s, ss, replacement) {
-  var re = new RegExp(goog.string.regExpEscape(ss), "g");
-  return s.replace(re, replacement.replace(/\$/g, "$$$$"));
-};
-goog.string.regExpEscape = function(s) {
-  return String(s).replace(/([-()\[\]{}+?*.$\^|,:#<!\\])/g, "\\$1").replace(/\x08/g, "\\x08");
-};
-goog.string.repeat = String.prototype.repeat ? function(string, length) {
-  return string.repeat(length);
-} : function(string, length) {
-  return Array(length + 1).join(string);
-};
-goog.string.padNumber = function(num, length, opt_precision) {
-  var s = goog.isDef(opt_precision) ? num.toFixed(opt_precision) : String(num), index = s.indexOf(".");
-  -1 == index && (index = s.length);
-  return goog.string.repeat("0", Math.max(0, length - index)) + s;
-};
-goog.string.makeSafe = function(obj) {
-  return null == obj ? "" : String(obj);
-};
-goog.string.buildString = function(var_args) {
-  return Array.prototype.join.call(arguments, "");
-};
-goog.string.getRandomString = function() {
-  return Math.floor(2147483648 * Math.random()).toString(36) + Math.abs(Math.floor(2147483648 * Math.random()) ^ goog.now()).toString(36);
-};
-goog.string.compareVersions = function(version1, version2) {
-  for (var order = 0, v1Subs = goog.string.trim(String(version1)).split("."), v2Subs = goog.string.trim(String(version2)).split("."), subCount = Math.max(v1Subs.length, v2Subs.length), subIdx = 0; 0 == order && subIdx < subCount; subIdx++) {
-    var v1Sub = v1Subs[subIdx] || "", v2Sub = v2Subs[subIdx] || "";
-    do {
-      var v1Comp = /(\d*)(\D*)(.*)/.exec(v1Sub) || ["", "", "", ""], v2Comp = /(\d*)(\D*)(.*)/.exec(v2Sub) || ["", "", "", ""];
-      if (0 == v1Comp[0].length && 0 == v2Comp[0].length) {
-        break;
-      }
-      order = goog.string.compareElements_(0 == v1Comp[1].length ? 0 : parseInt(v1Comp[1], 10), 0 == v2Comp[1].length ? 0 : parseInt(v2Comp[1], 10)) || goog.string.compareElements_(0 == v1Comp[2].length, 0 == v2Comp[2].length) || goog.string.compareElements_(v1Comp[2], v2Comp[2]);
-      v1Sub = v1Comp[3];
-      v2Sub = v2Comp[3];
-    } while (0 == order);
-  }
-  return order;
-};
-goog.string.compareElements_ = function(left, right) {
-  return left < right ? -1 : left > right ? 1 : 0;
-};
-goog.string.hashCode = function(str) {
-  for (var result = 0, i = 0; i < str.length; ++i) {
-    result = 31 * result + str.charCodeAt(i) >>> 0;
-  }
-  return result;
-};
-goog.string.uniqueStringCounter_ = 2147483648 * Math.random() | 0;
-goog.string.createUniqueString = function() {
-  return "goog_" + goog.string.uniqueStringCounter_++;
-};
-goog.string.toNumber = function(str) {
-  var num = Number(str);
-  return 0 == num && goog.string.isEmptyOrWhitespace(str) ? NaN : num;
-};
-goog.string.isLowerCamelCase = function(str) {
-  return /^[a-z]+([A-Z][a-z]*)*$/.test(str);
-};
-goog.string.isUpperCamelCase = function(str) {
-  return /^([A-Z][a-z]*)+$/.test(str);
-};
-goog.string.toCamelCase = function(str) {
-  return String(str).replace(/\-([a-z])/g, function(all, match) {
-    return match.toUpperCase();
-  });
-};
-goog.string.toSelectorCase = function(str) {
-  return String(str).replace(/([A-Z])/g, "-$1").toLowerCase();
-};
-goog.string.toTitleCase = function(str, opt_delimiters) {
-  var delimiters = goog.isString(opt_delimiters) ? goog.string.regExpEscape(opt_delimiters) : "\\s";
-  return str.replace(new RegExp("(^" + (delimiters ? "|[" + delimiters + "]+" : "") + ")([a-z])", "g"), function(all, p1, p2) {
-    return p1 + p2.toUpperCase();
-  });
-};
-goog.string.capitalize = function(str) {
-  return String(str.charAt(0)).toUpperCase() + String(str.substr(1)).toLowerCase();
-};
-goog.string.parseInt = function(value) {
-  isFinite(value) && (value = String(value));
-  return goog.isString(value) ? /^\s*-?0x/i.test(value) ? parseInt(value, 16) : parseInt(value, 10) : NaN;
-};
-goog.string.splitLimit = function(str, separator, limit) {
-  for (var parts = str.split(separator), returnVal = []; 0 < limit && parts.length;) {
-    returnVal.push(parts.shift()), limit--;
-  }
-  parts.length && returnVal.push(parts.join(separator));
-  return returnVal;
-};
-goog.string.lastComponent = function(str, separators) {
-  if (separators) {
-    "string" == typeof separators && (separators = [separators]);
-  } else {
-    return str;
-  }
-  for (var lastSeparatorIndex = -1, i = 0; i < separators.length; i++) {
-    if ("" != separators[i]) {
-      var currentSeparatorIndex = str.lastIndexOf(separators[i]);
-      currentSeparatorIndex > lastSeparatorIndex && (lastSeparatorIndex = currentSeparatorIndex);
-    }
-  }
-  return -1 == lastSeparatorIndex ? str : str.slice(lastSeparatorIndex + 1);
-};
-goog.string.editDistance = function(a, b) {
-  var v0 = [], v1 = [];
-  if (a == b) {
-    return 0;
-  }
-  if (!a.length || !b.length) {
-    return Math.max(a.length, b.length);
-  }
-  for (var i = 0; i < b.length + 1; i++) {
-    v0[i] = i;
-  }
-  for (i = 0; i < a.length; i++) {
-    v1[0] = i + 1;
-    for (var j = 0; j < b.length; j++) {
-      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + Number(a[i] != b[j]));
-    }
-    for (j = 0; j < v0.length; j++) {
-      v0[j] = v1[j];
-    }
-  }
-  return v1[b.length];
-};
-/*
-
- Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
- This code may only be used under the BSD style license found at
- http://polymer.github.io/LICENSE.txt
- The complete set of authors may be found at
- http://polymer.github.io/AUTHORS.txt
- The complete set of contributors may be found at
- http://polymer.github.io/CONTRIBUTORS.txt
- Code distributed by Google as part of the polymer project is also
- subject to an additional IP rights grant found at
- http://polymer.github.io/PATENTS.txt
-*/
-var security = {html:{}};
-security.html.contracts = {};
-security.html.contracts.AttrType = {NONE:1, SAFE_HTML:2, SAFE_URL:3, TRUSTED_RESOURCE_URL:4, SAFE_STYLE:5, SAFE_SCRIPT:7, ENUM:8, COMPILE_TIME_CONSTANT:9, IDENTIFIER:10};
-security.html.contracts.ElementContentType = {CONTRACT_UNSPECIFIED:0, SAFE_HTML:1, SAFE_STYLESHEET:2, SAFE_SCRIPT:3, BLACKLIST:4, VOID:5, STRING_RCDATA:6};
-security.html.contracts.typeOfAttribute = function(elName, attrName, getValue) {
-  if (Object.hasOwnProperty.call(security.html.contracts.ELEMENT_CONTRACTS_, elName)) {
-    var elementInfo = security.html.contracts.ELEMENT_CONTRACTS_[elName];
-    if (Object.hasOwnProperty.call(elementInfo, attrName)) {
-      var attrInfoArray = elementInfo[attrName];
-      if (attrInfoArray instanceof Array) {
-        for (var valueCache = null, requiredValueNotFound = !1, i = 0, n = attrInfoArray.length; i < n; ++i) {
-          var attrInfo = attrInfoArray[i], contingentAttr = attrInfo.contingentAttribute;
-          if (!contingentAttr) {
-            return attrInfo.contract;
-          }
-          null === valueCache && (valueCache = {});
-          var actualValue = Object.hasOwnProperty.call(valueCache, contingentAttr) ? valueCache[contingentAttr] : valueCache[contingentAttr] = getValue(contingentAttr);
-          if (actualValue === attrInfo.requiredValue) {
-            return attrInfo.contract;
-          }
-          null == actualValue && (requiredValueNotFound = !0);
-        }
-        if (requiredValueNotFound) {
-          return null;
-        }
-      }
-    }
-  }
-  var globalAttrType = security.html.contracts.GLOBAL_ATTRS_[attrName];
-  return "number" === typeof globalAttrType ? globalAttrType : null;
-};
-security.html.contracts.contentTypeForElement = function(elemName) {
-  return Object.hasOwnProperty.call(security.html.contracts.ELEMENT_CONTENT_TYPES_, elemName) ? security.html.contracts.ELEMENT_CONTENT_TYPES_[elemName] : null;
-};
-security.html.contracts.isEnumValueAllowed = function(elemName, attrName, value) {
-  var valueSetIndex = null, attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_[elemName];
-  attrToValueSetIndex && (valueSetIndex = attrToValueSetIndex[attrName]);
-  return "number" !== typeof valueSetIndex && ((attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_["*"]) && (valueSetIndex = attrToValueSetIndex[attrName]), "number" !== typeof valueSetIndex) ? !1 : !0 === security.html.contracts.ENUM_VALUE_SETS_[valueSetIndex][String(value).toLowerCase()];
-};
-security.html.contracts.GLOBAL_ATTRS_ = {align:security.html.contracts.AttrType.NONE, alt:security.html.contracts.AttrType.NONE, "aria-activedescendant":security.html.contracts.AttrType.IDENTIFIER, "aria-atomic":security.html.contracts.AttrType.NONE, "aria-autocomplete":security.html.contracts.AttrType.NONE, "aria-busy":security.html.contracts.AttrType.NONE, "aria-checked":security.html.contracts.AttrType.NONE, "aria-disabled":security.html.contracts.AttrType.NONE, "aria-dropeffect":security.html.contracts.AttrType.NONE, 
-"aria-expanded":security.html.contracts.AttrType.NONE, "aria-haspopup":security.html.contracts.AttrType.NONE, "aria-hidden":security.html.contracts.AttrType.NONE, "aria-invalid":security.html.contracts.AttrType.NONE, "aria-label":security.html.contracts.AttrType.NONE, "aria-level":security.html.contracts.AttrType.NONE, "aria-live":security.html.contracts.AttrType.NONE, "aria-multiline":security.html.contracts.AttrType.NONE, "aria-multiselectable":security.html.contracts.AttrType.NONE, "aria-orientation":security.html.contracts.AttrType.NONE, 
-"aria-posinset":security.html.contracts.AttrType.NONE, "aria-pressed":security.html.contracts.AttrType.NONE, "aria-readonly":security.html.contracts.AttrType.NONE, "aria-relevant":security.html.contracts.AttrType.NONE, "aria-required":security.html.contracts.AttrType.NONE, "aria-selected":security.html.contracts.AttrType.NONE, "aria-setsize":security.html.contracts.AttrType.NONE, "aria-sort":security.html.contracts.AttrType.NONE, "aria-valuemax":security.html.contracts.AttrType.NONE, "aria-valuemin":security.html.contracts.AttrType.NONE, 
-"aria-valuenow":security.html.contracts.AttrType.NONE, "aria-valuetext":security.html.contracts.AttrType.NONE, autocapitalize:security.html.contracts.AttrType.NONE, autocomplete:security.html.contracts.AttrType.NONE, autocorrect:security.html.contracts.AttrType.NONE, autofocus:security.html.contracts.AttrType.NONE, bgcolor:security.html.contracts.AttrType.NONE, border:security.html.contracts.AttrType.NONE, checked:security.html.contracts.AttrType.NONE, "class":security.html.contracts.AttrType.NONE, 
-color:security.html.contracts.AttrType.NONE, cols:security.html.contracts.AttrType.NONE, colspan:security.html.contracts.AttrType.NONE, dir:security.html.contracts.AttrType.ENUM, disabled:security.html.contracts.AttrType.NONE, draggable:security.html.contracts.AttrType.NONE, face:security.html.contracts.AttrType.NONE, "for":security.html.contracts.AttrType.IDENTIFIER, frameborder:security.html.contracts.AttrType.NONE, height:security.html.contracts.AttrType.NONE, hidden:security.html.contracts.AttrType.NONE, 
-href:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, hreflang:security.html.contracts.AttrType.NONE, id:security.html.contracts.AttrType.IDENTIFIER, ismap:security.html.contracts.AttrType.NONE, label:security.html.contracts.AttrType.NONE, lang:security.html.contracts.AttrType.NONE, list:security.html.contracts.AttrType.IDENTIFIER, loop:security.html.contracts.AttrType.NONE, max:security.html.contracts.AttrType.NONE, maxlength:security.html.contracts.AttrType.NONE, min:security.html.contracts.AttrType.NONE, 
-multiple:security.html.contracts.AttrType.NONE, muted:security.html.contracts.AttrType.NONE, name:security.html.contracts.AttrType.IDENTIFIER, placeholder:security.html.contracts.AttrType.NONE, preload:security.html.contracts.AttrType.NONE, rel:security.html.contracts.AttrType.NONE, required:security.html.contracts.AttrType.NONE, reversed:security.html.contracts.AttrType.NONE, role:security.html.contracts.AttrType.NONE, rows:security.html.contracts.AttrType.NONE, rowspan:security.html.contracts.AttrType.NONE, 
-selected:security.html.contracts.AttrType.NONE, shape:security.html.contracts.AttrType.NONE, size:security.html.contracts.AttrType.NONE, sizes:security.html.contracts.AttrType.NONE, span:security.html.contracts.AttrType.NONE, spellcheck:security.html.contracts.AttrType.NONE, src:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, start:security.html.contracts.AttrType.NONE, step:security.html.contracts.AttrType.NONE, style:security.html.contracts.AttrType.SAFE_STYLE, summary:security.html.contracts.AttrType.NONE, 
-tabindex:security.html.contracts.AttrType.NONE, target:security.html.contracts.AttrType.ENUM, title:security.html.contracts.AttrType.NONE, translate:security.html.contracts.AttrType.NONE, valign:security.html.contracts.AttrType.NONE, value:security.html.contracts.AttrType.NONE, width:security.html.contracts.AttrType.NONE, wrap:security.html.contracts.AttrType.NONE};
-security.html.contracts.ELEMENT_CONTRACTS_ = {a:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, area:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, audio:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, blockquote:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, button:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, 
-command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, details:{open:[{contract:security.html.contracts.AttrType.NONE}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, iframe:{srcdoc:[{contract:security.html.contracts.AttrType.SAFE_HTML}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
-formmethod:[{contract:security.html.contracts.AttrType.NONE}], pattern:[{contract:security.html.contracts.AttrType.NONE}], readonly:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", 
-requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"author"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"bookmark"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"canonical"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"cite"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"help"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"icon"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"license"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"next"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"prerender"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"preconnect"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"preload"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prev"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"search"}, {contract:security.html.contracts.AttrType.SAFE_URL, 
-contingentAttribute:"rel", requiredValue:"subresource"}], media:[{contract:security.html.contracts.AttrType.NONE}], nonce:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, menuitem:{icon:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, ol:{type:[{contract:security.html.contracts.AttrType.NONE}]}, q:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, script:{nonce:[{contract:security.html.contracts.AttrType.NONE}]}, source:{media:[{contract:security.html.contracts.AttrType.NONE}], 
-src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, style:{media:[{contract:security.html.contracts.AttrType.NONE}], nonce:[{contract:security.html.contracts.AttrType.NONE}]}, textarea:{readonly:[{contract:security.html.contracts.AttrType.NONE}]}, time:{datetime:[{contract:security.html.contracts.AttrType.NONE}]}, video:{autoplay:[{contract:security.html.contracts.AttrType.NONE}], controls:[{contract:security.html.contracts.AttrType.NONE}], poster:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
-src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}};
-security.html.contracts.ELEMENT_CONTENT_TYPES_ = {a:security.html.contracts.ElementContentType.SAFE_HTML, abbr:security.html.contracts.ElementContentType.SAFE_HTML, address:security.html.contracts.ElementContentType.SAFE_HTML, applet:security.html.contracts.ElementContentType.BLACKLIST, area:security.html.contracts.ElementContentType.VOID, article:security.html.contracts.ElementContentType.SAFE_HTML, aside:security.html.contracts.ElementContentType.SAFE_HTML, audio:security.html.contracts.ElementContentType.SAFE_HTML, 
-b:security.html.contracts.ElementContentType.SAFE_HTML, base:security.html.contracts.ElementContentType.BLACKLIST, bdi:security.html.contracts.ElementContentType.SAFE_HTML, bdo:security.html.contracts.ElementContentType.SAFE_HTML, blockquote:security.html.contracts.ElementContentType.SAFE_HTML, body:security.html.contracts.ElementContentType.SAFE_HTML, br:security.html.contracts.ElementContentType.VOID, button:security.html.contracts.ElementContentType.SAFE_HTML, canvas:security.html.contracts.ElementContentType.SAFE_HTML, 
-caption:security.html.contracts.ElementContentType.SAFE_HTML, cite:security.html.contracts.ElementContentType.SAFE_HTML, code:security.html.contracts.ElementContentType.SAFE_HTML, col:security.html.contracts.ElementContentType.VOID, colgroup:security.html.contracts.ElementContentType.SAFE_HTML, command:security.html.contracts.ElementContentType.SAFE_HTML, data:security.html.contracts.ElementContentType.SAFE_HTML, datalist:security.html.contracts.ElementContentType.SAFE_HTML, dd:security.html.contracts.ElementContentType.SAFE_HTML, 
-del:security.html.contracts.ElementContentType.SAFE_HTML, details:security.html.contracts.ElementContentType.SAFE_HTML, dfn:security.html.contracts.ElementContentType.SAFE_HTML, dialog:security.html.contracts.ElementContentType.SAFE_HTML, div:security.html.contracts.ElementContentType.SAFE_HTML, dl:security.html.contracts.ElementContentType.SAFE_HTML, dt:security.html.contracts.ElementContentType.SAFE_HTML, em:security.html.contracts.ElementContentType.SAFE_HTML, embed:security.html.contracts.ElementContentType.BLACKLIST, 
-fieldset:security.html.contracts.ElementContentType.SAFE_HTML, figcaption:security.html.contracts.ElementContentType.SAFE_HTML, figure:security.html.contracts.ElementContentType.SAFE_HTML, font:security.html.contracts.ElementContentType.SAFE_HTML, footer:security.html.contracts.ElementContentType.SAFE_HTML, form:security.html.contracts.ElementContentType.SAFE_HTML, frame:security.html.contracts.ElementContentType.SAFE_HTML, frameset:security.html.contracts.ElementContentType.SAFE_HTML, h1:security.html.contracts.ElementContentType.SAFE_HTML, 
-h2:security.html.contracts.ElementContentType.SAFE_HTML, h3:security.html.contracts.ElementContentType.SAFE_HTML, h4:security.html.contracts.ElementContentType.SAFE_HTML, h5:security.html.contracts.ElementContentType.SAFE_HTML, h6:security.html.contracts.ElementContentType.SAFE_HTML, head:security.html.contracts.ElementContentType.SAFE_HTML, header:security.html.contracts.ElementContentType.SAFE_HTML, hr:security.html.contracts.ElementContentType.VOID, html:security.html.contracts.ElementContentType.SAFE_HTML, 
-i:security.html.contracts.ElementContentType.SAFE_HTML, iframe:security.html.contracts.ElementContentType.SAFE_HTML, img:security.html.contracts.ElementContentType.VOID, input:security.html.contracts.ElementContentType.VOID, ins:security.html.contracts.ElementContentType.SAFE_HTML, kbd:security.html.contracts.ElementContentType.SAFE_HTML, keygen:security.html.contracts.ElementContentType.VOID, label:security.html.contracts.ElementContentType.SAFE_HTML, legend:security.html.contracts.ElementContentType.SAFE_HTML, 
-li:security.html.contracts.ElementContentType.SAFE_HTML, link:security.html.contracts.ElementContentType.VOID, main:security.html.contracts.ElementContentType.SAFE_HTML, map:security.html.contracts.ElementContentType.SAFE_HTML, mark:security.html.contracts.ElementContentType.SAFE_HTML, math:security.html.contracts.ElementContentType.BLACKLIST, menu:security.html.contracts.ElementContentType.SAFE_HTML, menuitem:security.html.contracts.ElementContentType.SAFE_HTML, meta:security.html.contracts.ElementContentType.BLACKLIST, 
-meter:security.html.contracts.ElementContentType.SAFE_HTML, nav:security.html.contracts.ElementContentType.SAFE_HTML, noscript:security.html.contracts.ElementContentType.SAFE_HTML, object:security.html.contracts.ElementContentType.BLACKLIST, ol:security.html.contracts.ElementContentType.SAFE_HTML, optgroup:security.html.contracts.ElementContentType.SAFE_HTML, option:security.html.contracts.ElementContentType.SAFE_HTML, output:security.html.contracts.ElementContentType.SAFE_HTML, p:security.html.contracts.ElementContentType.SAFE_HTML, 
-param:security.html.contracts.ElementContentType.VOID, picture:security.html.contracts.ElementContentType.SAFE_HTML, pre:security.html.contracts.ElementContentType.SAFE_HTML, progress:security.html.contracts.ElementContentType.SAFE_HTML, q:security.html.contracts.ElementContentType.SAFE_HTML, rb:security.html.contracts.ElementContentType.SAFE_HTML, rp:security.html.contracts.ElementContentType.SAFE_HTML, rt:security.html.contracts.ElementContentType.SAFE_HTML, rtc:security.html.contracts.ElementContentType.SAFE_HTML, 
-ruby:security.html.contracts.ElementContentType.SAFE_HTML, s:security.html.contracts.ElementContentType.SAFE_HTML, samp:security.html.contracts.ElementContentType.SAFE_HTML, script:security.html.contracts.ElementContentType.SAFE_SCRIPT, section:security.html.contracts.ElementContentType.SAFE_HTML, select:security.html.contracts.ElementContentType.SAFE_HTML, slot:security.html.contracts.ElementContentType.SAFE_HTML, small:security.html.contracts.ElementContentType.SAFE_HTML, source:security.html.contracts.ElementContentType.VOID, 
-span:security.html.contracts.ElementContentType.SAFE_HTML, strong:security.html.contracts.ElementContentType.SAFE_HTML, style:security.html.contracts.ElementContentType.SAFE_STYLESHEET, sub:security.html.contracts.ElementContentType.SAFE_HTML, summary:security.html.contracts.ElementContentType.SAFE_HTML, sup:security.html.contracts.ElementContentType.SAFE_HTML, svg:security.html.contracts.ElementContentType.BLACKLIST, table:security.html.contracts.ElementContentType.SAFE_HTML, tbody:security.html.contracts.ElementContentType.SAFE_HTML, 
-td:security.html.contracts.ElementContentType.SAFE_HTML, template:security.html.contracts.ElementContentType.BLACKLIST, textarea:security.html.contracts.ElementContentType.STRING_RCDATA, tfoot:security.html.contracts.ElementContentType.SAFE_HTML, th:security.html.contracts.ElementContentType.SAFE_HTML, thead:security.html.contracts.ElementContentType.SAFE_HTML, time:security.html.contracts.ElementContentType.SAFE_HTML, title:security.html.contracts.ElementContentType.STRING_RCDATA, tr:security.html.contracts.ElementContentType.SAFE_HTML, 
-track:security.html.contracts.ElementContentType.VOID, u:security.html.contracts.ElementContentType.SAFE_HTML, ul:security.html.contracts.ElementContentType.SAFE_HTML, "var":security.html.contracts.ElementContentType.SAFE_HTML, video:security.html.contracts.ElementContentType.SAFE_HTML, wbr:security.html.contracts.ElementContentType.VOID};
-security.html.contracts.ENUM_VALUE_SETS_ = [{auto:!0, ltr:!0, rtl:!0}, {_self:!0, _blank:!0}];
-security.html.contracts.ENUM_VALUE_SET_BY_ATTR_ = {"*":{dir:0, target:1}};
-security.html.namealiases = {};
-security.html.namealiases.propertyToAttr = function(propName) {
-  var propToAttr = security.html.namealiases.propToAttr_;
-  if (!propToAttr) {
-    var attrToProp = security.html.namealiases.getAttrToProp_();
-    propToAttr = security.html.namealiases.propToAttr_ = goog.object.transpose(attrToProp);
-  }
-  var attr = propToAttr[propName];
-  return goog.isString(attr) ? attr : goog.string.toSelectorCase(propName);
-};
-security.html.namealiases.attrToProperty = function(attrName) {
-  var canonAttrName = String(attrName).toLowerCase(), prop = security.html.namealiases.getAttrToProp_()[canonAttrName];
-  return goog.isString(prop) ? prop : goog.string.toCamelCase(canonAttrName);
-};
-security.html.namealiases.specialPropertyNameWorstCase = function(name) {
-  var lcname = name.toLowerCase(), prop = security.html.namealiases.getAttrToProp_()[lcname];
-  return goog.isString(prop) ? prop : null;
-};
-security.html.namealiases.getAttrToProp_ = function() {
-  if (!security.html.namealiases.attrToProp_) {
-    security.html.namealiases.attrToProp_ = goog.object.clone(security.html.namealiases.ODD_ATTR_TO_PROP_);
-    for (var noncanon = security.html.namealiases.NONCANON_PROPS_, i = 0, n = noncanon.length; i < n; ++i) {
-      var name = noncanon[i];
-      security.html.namealiases.attrToProp_[name.toLowerCase()] = name;
-    }
-  }
-  return security.html.namealiases.attrToProp_;
-};
-security.html.namealiases.NONCANON_PROPS_ = "aLink accessKey allowFullscreen bgColor cellPadding cellSpacing codeBase codeType contentEditable crossOrigin dateTime dirName formAction formEnctype formMethod formNoValidate formTarget frameBorder innerHTML innerText inputMode isMap longDesc marginHeight marginWidth maxLength mediaGroup minLength noHref noResize noShade noValidate noWrap nodeValue outerHTML outerText readOnly tabIndex textContent trueSpeed useMap vAlign vLink valueAsDate valueAsNumber valueType".split(" ");
-security.html.namealiases.ODD_ATTR_TO_PROP_ = {accept_charset:"acceptCharset", "char":"ch", charoff:"chOff", checked:"defaultChecked", "class":"className", "for":"htmlFor", http_equiv:"httpEquiv", muted:"defaultMuted", selected:"defaultSelected", value:"defaultValue"};
-security.html.namealiases.attrToProp_ = null;
-security.html.namealiases.propToAttr_ = null;
-security.polymer_resin = {};
-security.polymer_resin.CustomElementClassification = {BUILTIN:0, LEGACY:1, CUSTOM:2, CUSTOMIZABLE:3};
-security.polymer_resin.docRegisteredElements_ = {};
-security.polymer_resin.usePolymerTelemetry_ = !1;
-security.polymer_resin.countPolymerTelemetryUnrolled_ = 0;
-security.polymer_resin.hintUsesDeprecatedRegisterElement = function() {
-  security.polymer_resin.usePolymerTelemetry_ = !0;
-};
-security.polymer_resin.ELEMENT_NAME_CHAR_RANGES_ = "a-z.0-9_\u00b7\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u037d\u200c\u200d\u203f-\u2040\u2070-\u218f\u2c00-\u2fef\u3001-\udfff\uf900-\ufdcf\ufdf0-\ufffd";
-security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_ = new RegExp("^(?!(?:annotation-xml|color-profile|font-face|font-face(?:-(?:src|uri|format|name))?|missing-glyph)$)[a-z][" + security.polymer_resin.ELEMENT_NAME_CHAR_RANGES_ + "]*-[\\-" + security.polymer_resin.ELEMENT_NAME_CHAR_RANGES_ + "]*$");
-security.polymer_resin.classifyElement = function(name, ctor) {
-  var customElementsRegistry = window.customElements;
-  if (security.polymer_resin.usePolymerTelemetry_) {
-    for (var regs = window.Polymer.telemetry.registrations, n = regs.length, i = security.polymer_resin.countPolymerTelemetryUnrolled_; i < n; ++i) {
-      security.polymer_resin.docRegisteredElements_[regs[i].is] = security.polymer_resin.docRegisteredElements_;
-    }
-    security.polymer_resin.countPolymerTelemetryUnrolled_ = n;
-  }
-  return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : "HTMLUnknownElement" === ctor.name ? security.polymer_resin.CustomElementClassification.LEGACY : "HTMLElement" === ctor.name && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
-};
-security.polymer_resin.sanitizer = {};
-security.polymer_resin.STANDALONE = !0;
-security.polymer_resin.SafeType = {CONSTANT:"CONSTANT", HTML:"HTML", JAVASCRIPT:"JAVASCRIPT", RESOURCE_URL:"RESOURCE_URL", STRING:"STRING", STYLE:"STYLE", URL:"URL"};
-security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER = function(isViolation, formatString, var_args) {
-  for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
-    consoleArgs[i - 1] = arguments[i];
-  }
-  isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
-};
-security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_ = function(value, type, fallback) {
-  return fallback;
-};
-security.polymer_resin.sanitizer.makeSanitizer = function(config) {
-  function getAttributeValue(name) {
-    var value = this.getAttribute(name);
-    return !value || /[\[\{]/.test(name) ? null : value;
-  }
-  function sanitize(node, name, type, value) {
-    if (!value) {
-      return value;
-    }
-    var nodeType = node.nodeType;
-    if (nodeType !== Node.ELEMENT_NODE) {
-      if (nodeType === Node.TEXT_NODE) {
-        var parentElement = node.parentElement, allowText = !parentElement;
-        if (parentElement && parentElement.nodeType === Node.ELEMENT_NODE) {
-          var parentElementName = parentElement.localName;
-          switch(security.polymer_resin.classifyElement(parentElementName, parentElement.constructor)) {
-            case security.polymer_resin.CustomElementClassification.BUILTIN:
-            case security.polymer_resin.CustomElementClassification.LEGACY:
-              var contentType = security.html.contracts.contentTypeForElement(parentElementName);
-              allowText = contentType === security.html.contracts.ElementContentType.SAFE_HTML || contentType === security.html.contracts.ElementContentType.STRING_RCDATA;
-              break;
-            case security.polymer_resin.CustomElementClassification.CUSTOMIZABLE:
-            case security.polymer_resin.CustomElementClassification.CUSTOM:
-              allowText = !0;
-          }
-        }
-        if (allowText) {
-          return "" + safeTypesBridge(value, security.polymer_resin.SafeType.STRING, value);
-        }
-      }
-      reportHandler && reportHandler(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
-      return security.polymer_resin.sanitizer.INNOCUOUS_STRING;
-    }
-    var elementName = node.localName;
-    var elementName$jscomp$0 = node.localName;
-    if (node.getAttribute("is") || security.polymer_resin.classifyElement(elementName$jscomp$0, node.constructor) !== security.polymer_resin.CustomElementClassification.CUSTOM) {
-      var uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0];
-      uncustomizedProxy || (uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0] = document.createElement(elementName$jscomp$0));
-      var elementProxy = uncustomizedProxy;
-    } else {
-      elementProxy = VANILLA_HTML_ELEMENT;
-    }
-    switch(type) {
-      case "attribute":
-        if (security.html.namealiases.attrToProperty(name) in elementProxy) {
-          break;
-        }
-        return value;
-      case "property":
-        if (name in elementProxy) {
-          break;
-        }
-        var worstCase = security.html.namealiases.specialPropertyNameWorstCase(name);
-        if (worstCase && worstCase in elementProxy) {
-          break;
-        }
-        return value;
-      default:
-        throw Error(type + ": " + typeof type);
-    }
-    var attrName = "attribute" == type ? name.toLowerCase() : security.html.namealiases.propertyToAttr(name), attrType = security.html.contracts.typeOfAttribute(elementName, attrName, goog.bind(getAttributeValue, node)), safeValue = DID_NOT_UNWRAP, safeReplacement = null;
-    if (null != attrType) {
-      var valueHandler = valueHandlers[attrType], safeType = valueHandler.safeType;
-      safeReplacement = valueHandler.safeReplacement;
-      safeType && (safeValue = safeTypesBridge(value, safeType, DID_NOT_UNWRAP));
-      if (safeValue === DID_NOT_UNWRAP && valueHandler.filter) {
-        var stringValue = "" + safeTypesBridge(value, security.polymer_resin.SafeType.STRING, value);
-        safeValue = valueHandler.filter(elementName, attrName, stringValue);
-      }
-    }
-    safeValue === DID_NOT_UNWRAP && (safeValue = safeReplacement || security.polymer_resin.sanitizer.INNOCUOUS_STRING, reportHandler && reportHandler(!0, 'Failed to sanitize attribute of <%s>: <%s %s="%O">', elementName, elementName, attrName, value));
-    return safeValue;
-  }
-  var reportHandler = config.reportHandler || void 0, safeTypesBridge = config.safeTypesBridge || security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_, configUnsafePassThruDisallowedValues = config.UNSAFE_passThruDisallowedValues, allowUnsafeValues = !1;
-  null != configUnsafePassThruDisallowedValues && goog.DEBUG && (allowUnsafeValues = !0 === configUnsafePassThruDisallowedValues);
-  var allowedIdentifierPattern_ = /^$/, configAllowedIdentifierPrefixes = config.allowedIdentifierPrefixes;
-  if (configAllowedIdentifierPrefixes) {
-    for (var i = 0, n = configAllowedIdentifierPrefixes.length; i < n; ++i) {
-      allowedIdentifierPattern_ = new RegExp(allowedIdentifierPattern_.source + "|^" + goog.string.regExpEscape(configAllowedIdentifierPrefixes[i]));
-    }
-  }
-  goog.DEBUG && void 0 === reportHandler && "undefined" !== typeof console && (reportHandler = security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER);
-  reportHandler && reportHandler(!1, "initResin");
-  var valueHandlers = [];
-  valueHandlers[security.html.contracts.AttrType.NONE] = {filter:function(e, a, v) {
-    return v;
-  }, safeReplacement:null, safeType:null};
-  valueHandlers[security.html.contracts.AttrType.SAFE_HTML] = {filter:null, safeReplacement:null, safeType:security.polymer_resin.SafeType.HTML};
-  valueHandlers[security.html.contracts.AttrType.SAFE_URL] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.URL};
-  valueHandlers[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.RESOURCE_URL};
-  valueHandlers[security.html.contracts.AttrType.SAFE_STYLE] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.STYLE};
-  valueHandlers[security.html.contracts.AttrType.SAFE_SCRIPT] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_SCRIPT_, safeType:security.polymer_resin.SafeType.JAVASCRIPT};
-  valueHandlers[security.html.contracts.AttrType.ENUM] = {filter:function(e, a, v) {
-    var lv = String(v).toLowerCase();
-    return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
-  }, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:null};
-  valueHandlers[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filter:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.CONSTANT};
-  valueHandlers[security.html.contracts.AttrType.IDENTIFIER] = {filter:function(e, a, v) {
-    return allowedIdentifierPattern_.test(v) ? v : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
-  }, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.CONSTANT};
-  var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT = document.createElement("polyresinuncustomized"), DID_NOT_UNWRAP = {};
-  return allowUnsafeValues ? function(node, name, type, value) {
-    sanitize(node, name, type, value);
-    return value;
-  } : sanitize;
-};
-security.polymer_resin.sanitizer.INNOCUOUS_STRING = "zClosurez";
-security.polymer_resin.sanitizer.INNOCUOUS_SCRIPT_ = " /*zClosurez*/ ";
-security.polymer_resin.sanitizer.INNOCUOUS_URL_ = "about:invalid#zClosurez";
-security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER = security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER;
-security.polymer_resin.install = function(opt_config) {
-  var sanitize = security.polymer_resin.sanitizer.makeSanitizer(opt_config || {});
-  if (/^1\./.test(Polymer.version)) {
-    security.polymer_resin.hintUsesDeprecatedRegisterElement();
-    var origCompute = Polymer.Base._computeFinalAnnotationValue, computeFinalAnnotationSafeValue = function(node, property, value, info) {
-      var finalValue = origCompute.call(this, node, property, value, info), type = "property";
-      if (info && info.propertyName) {
-        var name = info.propertyName;
-      } else {
-        name = property, type = info && info.kind || "property";
-      }
-      return sanitize(node, name, type, finalValue);
-    };
-    Polymer.Base._computeFinalAnnotationValue = computeFinalAnnotationSafeValue;
-    if (Polymer.Base._computeFinalAnnotationValue !== computeFinalAnnotationSafeValue) {
-      throw Error("Cannot replace _computeFinalAnnotationValue.  Is Polymer frozen?");
-    }
-  } else {
-    var origSanitize = Polymer.sanitizeDOMValue || Polymer.Settings && Polymer.Settings.sanitizeDOMValue, sanitizeDOMValue = function(value, name, type, node) {
-      var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value;
-      return node ? sanitize(node, name, type, origSanitizedValue) : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
-    };
-    if (Polymer.Settings && Polymer.Settings.setSanitizeDOMValue) {
-      Polymer.Settings.setSanitizeDOMValue(sanitizeDOMValue);
-    } else {
-      if (Polymer.sanitizeDOMValue = sanitizeDOMValue, Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
-        throw Error("Cannot install sanitizeDOMValue.  Is Polymer frozen?");
-      }
-    }
-  }
-};
-security.polymer_resin.STANDALONE && (goog.exportSymbol("security.polymer_resin.install", security.polymer_resin.install), goog.exportSymbol("security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER", security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER));
+goog.TRUSTED_TYPES_POLICY_ = goog.TRUSTED_TYPES_POLICY_NAME ? goog.createTrustedTypesPolicy(goog.TRUSTED_TYPES_POLICY_NAME + "#base") : null;
 goog.debug = {};
 goog.debug.Error = function(opt_msg) {
   if (Error.captureStackTrace) {
@@ -1585,6 +666,10 @@ goog.asserts.setErrorHandler = function(errorHandler) {
 goog.asserts.assert = function(condition, opt_message, var_args) {
   goog.asserts.ENABLE_ASSERTS && !condition && goog.asserts.doAssertFailure_("", null, opt_message, Array.prototype.slice.call(arguments, 2));
   return condition;
+};
+goog.asserts.assertExists = function(value, opt_message, var_args) {
+  goog.asserts.ENABLE_ASSERTS && null == value && goog.asserts.doAssertFailure_("Expected to exist: %s.", [value], opt_message, Array.prototype.slice.call(arguments, 2));
+  return value;
 };
 goog.asserts.fail = function(opt_message, var_args) {
   goog.asserts.ENABLE_ASSERTS && goog.asserts.errorHandler_(new goog.asserts.AssertionError("Failure" + (opt_message ? ": " + opt_message : ""), Array.prototype.slice.call(arguments, 1)));
@@ -2061,7 +1146,251 @@ goog.array.copyByIndex = function(arr, index_arr) {
 goog.array.concatMap = function(arr, f, opt_obj) {
   return goog.array.concat.apply([], goog.array.map(arr, f, opt_obj));
 };
+goog.dom.asserts = {};
+goog.dom.asserts.assertIsLocation = function(o) {
+  if (goog.asserts.ENABLE_ASSERTS) {
+    var win = goog.dom.asserts.getWindow_(o);
+    win && (!o || !(o instanceof win.Location) && o instanceof win.Element) && goog.asserts.fail("Argument is not a Location (or a non-Element mock); got: %s", goog.dom.asserts.debugStringForType_(o));
+  }
+  return o;
+};
+goog.dom.asserts.assertIsElementType_ = function(o, typename) {
+  if (goog.asserts.ENABLE_ASSERTS) {
+    var win = goog.dom.asserts.getWindow_(o);
+    win && "undefined" != typeof win[typename] && (o && (o instanceof win[typename] || !(o instanceof win.Location || o instanceof win.Element)) || goog.asserts.fail("Argument is not a %s (or a non-Element, non-Location mock); got: %s", typename, goog.dom.asserts.debugStringForType_(o)));
+  }
+  return o;
+};
+goog.dom.asserts.assertIsHTMLAnchorElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLAnchorElement");
+};
+goog.dom.asserts.assertIsHTMLButtonElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLButtonElement");
+};
+goog.dom.asserts.assertIsHTMLLinkElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLLinkElement");
+};
+goog.dom.asserts.assertIsHTMLImageElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLImageElement");
+};
+goog.dom.asserts.assertIsHTMLAudioElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLAudioElement");
+};
+goog.dom.asserts.assertIsHTMLVideoElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLVideoElement");
+};
+goog.dom.asserts.assertIsHTMLInputElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLInputElement");
+};
+goog.dom.asserts.assertIsHTMLTextAreaElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLTextAreaElement");
+};
+goog.dom.asserts.assertIsHTMLCanvasElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLCanvasElement");
+};
+goog.dom.asserts.assertIsHTMLEmbedElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLEmbedElement");
+};
+goog.dom.asserts.assertIsHTMLFormElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLFormElement");
+};
+goog.dom.asserts.assertIsHTMLFrameElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLFrameElement");
+};
+goog.dom.asserts.assertIsHTMLIFrameElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLIFrameElement");
+};
+goog.dom.asserts.assertIsHTMLObjectElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLObjectElement");
+};
+goog.dom.asserts.assertIsHTMLScriptElement = function(o) {
+  return goog.dom.asserts.assertIsElementType_(o, "HTMLScriptElement");
+};
+goog.dom.asserts.debugStringForType_ = function(value) {
+  if (goog.isObject(value)) {
+    try {
+      return value.constructor.displayName || value.constructor.name || Object.prototype.toString.call(value);
+    } catch (e) {
+      return "<object could not be stringified>";
+    }
+  } else {
+    return void 0 === value ? "undefined" : null === value ? "null" : typeof value;
+  }
+};
+goog.dom.asserts.getWindow_ = function(o) {
+  try {
+    var doc = o && o.ownerDocument, win = doc && (doc.defaultView || doc.parentWindow);
+    win = win || goog.global;
+    if (win.Element && win.Location) {
+      return win;
+    }
+  } catch (ex) {
+  }
+  return null;
+};
 goog.dom.HtmlElement = function() {
+};
+goog.functions = {};
+goog.functions.constant = function(retValue) {
+  return function() {
+    return retValue;
+  };
+};
+goog.functions.FALSE = function() {
+  return !1;
+};
+goog.functions.TRUE = function() {
+  return !0;
+};
+goog.functions.NULL = function() {
+  return null;
+};
+goog.functions.identity = function(opt_returnValue) {
+  return opt_returnValue;
+};
+goog.functions.error = function(message) {
+  return function() {
+    throw Error(message);
+  };
+};
+goog.functions.fail = function(err) {
+  return function() {
+    throw err;
+  };
+};
+goog.functions.lock = function(f, opt_numArgs) {
+  opt_numArgs = opt_numArgs || 0;
+  return function() {
+    return f.apply(this, Array.prototype.slice.call(arguments, 0, opt_numArgs));
+  };
+};
+goog.functions.nth = function(n) {
+  return function() {
+    return arguments[n];
+  };
+};
+goog.functions.partialRight = function(fn, var_args) {
+  var rightArgs = Array.prototype.slice.call(arguments, 1);
+  return function() {
+    var newArgs = Array.prototype.slice.call(arguments);
+    newArgs.push.apply(newArgs, rightArgs);
+    return fn.apply(this, newArgs);
+  };
+};
+goog.functions.withReturnValue = function(f, retValue) {
+  return goog.functions.sequence(f, goog.functions.constant(retValue));
+};
+goog.functions.equalTo = function(value, opt_useLooseComparison) {
+  return function(other) {
+    return opt_useLooseComparison ? value == other : value === other;
+  };
+};
+goog.functions.compose = function(fn, var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    var result;
+    length && (result = functions[length - 1].apply(this, arguments));
+    for (var i = length - 2; 0 <= i; i--) {
+      result = functions[i].call(this, result);
+    }
+    return result;
+  };
+};
+goog.functions.sequence = function(var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    for (var result, i = 0; i < length; i++) {
+      result = functions[i].apply(this, arguments);
+    }
+    return result;
+  };
+};
+goog.functions.and = function(var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    for (var i = 0; i < length; i++) {
+      if (!functions[i].apply(this, arguments)) {
+        return !1;
+      }
+    }
+    return !0;
+  };
+};
+goog.functions.or = function(var_args) {
+  var functions = arguments, length = functions.length;
+  return function() {
+    for (var i = 0; i < length; i++) {
+      if (functions[i].apply(this, arguments)) {
+        return !0;
+      }
+    }
+    return !1;
+  };
+};
+goog.functions.not = function(f) {
+  return function() {
+    return !f.apply(this, arguments);
+  };
+};
+goog.functions.create = function(constructor, var_args) {
+  var temp = function() {
+  };
+  temp.prototype = constructor.prototype;
+  var obj = new temp;
+  constructor.apply(obj, Array.prototype.slice.call(arguments, 1));
+  return obj;
+};
+goog.functions.CACHE_RETURN_VALUE = !0;
+goog.functions.cacheReturnValue = function(fn) {
+  var called = !1, value;
+  return function() {
+    if (!goog.functions.CACHE_RETURN_VALUE) {
+      return fn();
+    }
+    called || (value = fn(), called = !0);
+    return value;
+  };
+};
+goog.functions.once = function(f) {
+  var inner = f;
+  return function() {
+    if (inner) {
+      var tmp = inner;
+      inner = null;
+      tmp();
+    }
+  };
+};
+goog.functions.debounce = function(f, interval, opt_scope) {
+  var timeout = 0;
+  return function(var_args) {
+    goog.global.clearTimeout(timeout);
+    var args = arguments;
+    timeout = goog.global.setTimeout(function() {
+      f.apply(opt_scope, args);
+    }, interval);
+  };
+};
+goog.functions.throttle = function(f, interval, opt_scope) {
+  var timeout = 0, shouldFire = !1, args = [], handleTimeout = function() {
+    timeout = 0;
+    shouldFire && (shouldFire = !1, fire());
+  }, fire = function() {
+    timeout = goog.global.setTimeout(handleTimeout, interval);
+    f.apply(opt_scope, args);
+  };
+  return function(var_args) {
+    args = arguments;
+    timeout ? shouldFire = !0 : fire();
+  };
+};
+goog.functions.rateLimit = function(f, interval, opt_scope) {
+  var timeout = 0, handleTimeout = function() {
+    timeout = 0;
+  };
+  return function(var_args) {
+    timeout || (timeout = goog.global.setTimeout(handleTimeout, interval), f.apply(opt_scope, arguments));
+  };
 };
 goog.dom.TagName = function(tagName) {
   this.tagName_ = tagName;
@@ -2199,32 +1528,256 @@ goog.dom.TagName.UL = new goog.dom.TagName("UL");
 goog.dom.TagName.VAR = new goog.dom.TagName("VAR");
 goog.dom.TagName.VIDEO = new goog.dom.TagName("VIDEO");
 goog.dom.TagName.WBR = new goog.dom.TagName("WBR");
+goog.object = {};
+goog.object.is = function(v, v2) {
+  return v === v2 ? 0 !== v || 1 / v === 1 / v2 : v !== v && v2 !== v2;
+};
+goog.object.forEach = function(obj, f, opt_obj) {
+  for (var key in obj) {
+    f.call(opt_obj, obj[key], key, obj);
+  }
+};
+goog.object.filter = function(obj, f, opt_obj) {
+  var res = {}, key;
+  for (key in obj) {
+    f.call(opt_obj, obj[key], key, obj) && (res[key] = obj[key]);
+  }
+  return res;
+};
+goog.object.map = function(obj, f, opt_obj) {
+  var res = {}, key;
+  for (key in obj) {
+    res[key] = f.call(opt_obj, obj[key], key, obj);
+  }
+  return res;
+};
+goog.object.some = function(obj, f, opt_obj) {
+  for (var key in obj) {
+    if (f.call(opt_obj, obj[key], key, obj)) {
+      return !0;
+    }
+  }
+  return !1;
+};
+goog.object.every = function(obj, f, opt_obj) {
+  for (var key in obj) {
+    if (!f.call(opt_obj, obj[key], key, obj)) {
+      return !1;
+    }
+  }
+  return !0;
+};
+goog.object.getCount = function(obj) {
+  var rv = 0, key;
+  for (key in obj) {
+    rv++;
+  }
+  return rv;
+};
+goog.object.getAnyKey = function(obj) {
+  for (var key in obj) {
+    return key;
+  }
+};
+goog.object.getAnyValue = function(obj) {
+  for (var key in obj) {
+    return obj[key];
+  }
+};
+goog.object.contains = function(obj, val) {
+  return goog.object.containsValue(obj, val);
+};
+goog.object.getValues = function(obj) {
+  var res = [], i = 0, key;
+  for (key in obj) {
+    res[i++] = obj[key];
+  }
+  return res;
+};
+goog.object.getKeys = function(obj) {
+  var res = [], i = 0, key;
+  for (key in obj) {
+    res[i++] = key;
+  }
+  return res;
+};
+goog.object.getValueByKeys = function(obj, var_args) {
+  for (var isArrayLike = goog.isArrayLike(var_args), keys = isArrayLike ? var_args : arguments, i = isArrayLike ? 0 : 1; i < keys.length; i++) {
+    if (null == obj) {
+      return;
+    }
+    obj = obj[keys[i]];
+  }
+  return obj;
+};
+goog.object.containsKey = function(obj, key) {
+  return null !== obj && key in obj;
+};
+goog.object.containsValue = function(obj, val) {
+  for (var key in obj) {
+    if (obj[key] == val) {
+      return !0;
+    }
+  }
+  return !1;
+};
+goog.object.findKey = function(obj, f, opt_this) {
+  for (var key in obj) {
+    if (f.call(opt_this, obj[key], key, obj)) {
+      return key;
+    }
+  }
+};
+goog.object.findValue = function(obj, f, opt_this) {
+  var key = goog.object.findKey(obj, f, opt_this);
+  return key && obj[key];
+};
+goog.object.isEmpty = function(obj) {
+  for (var key in obj) {
+    return !1;
+  }
+  return !0;
+};
+goog.object.clear = function(obj) {
+  for (var i in obj) {
+    delete obj[i];
+  }
+};
+goog.object.remove = function(obj, key) {
+  var rv;
+  (rv = key in obj) && delete obj[key];
+  return rv;
+};
+goog.object.add = function(obj, key, val) {
+  if (null !== obj && key in obj) {
+    throw Error('The object already contains the key "' + key + '"');
+  }
+  goog.object.set(obj, key, val);
+};
+goog.object.get = function(obj, key, opt_val) {
+  return null !== obj && key in obj ? obj[key] : opt_val;
+};
+goog.object.set = function(obj, key, value) {
+  obj[key] = value;
+};
+goog.object.setIfUndefined = function(obj, key, value) {
+  return key in obj ? obj[key] : obj[key] = value;
+};
+goog.object.setWithReturnValueIfNotSet = function(obj, key, f) {
+  if (key in obj) {
+    return obj[key];
+  }
+  var val = f();
+  return obj[key] = val;
+};
+goog.object.equals = function(a, b) {
+  for (var k in a) {
+    if (!(k in b) || a[k] !== b[k]) {
+      return !1;
+    }
+  }
+  for (k in b) {
+    if (!(k in a)) {
+      return !1;
+    }
+  }
+  return !0;
+};
+goog.object.clone = function(obj) {
+  var res = {}, key;
+  for (key in obj) {
+    res[key] = obj[key];
+  }
+  return res;
+};
+goog.object.unsafeClone = function(obj) {
+  var type = goog.typeOf(obj);
+  if ("object" == type || "array" == type) {
+    if (goog.isFunction(obj.clone)) {
+      return obj.clone();
+    }
+    var clone = "array" == type ? [] : {}, key;
+    for (key in obj) {
+      clone[key] = goog.object.unsafeClone(obj[key]);
+    }
+    return clone;
+  }
+  return obj;
+};
+goog.object.transpose = function(obj) {
+  var transposed = {}, key;
+  for (key in obj) {
+    transposed[obj[key]] = key;
+  }
+  return transposed;
+};
+goog.object.PROTOTYPE_FIELDS_ = "constructor hasOwnProperty isPrototypeOf propertyIsEnumerable toLocaleString toString valueOf".split(" ");
+goog.object.extend = function(target, var_args) {
+  for (var key, source, i = 1; i < arguments.length; i++) {
+    source = arguments[i];
+    for (key in source) {
+      target[key] = source[key];
+    }
+    for (var j = 0; j < goog.object.PROTOTYPE_FIELDS_.length; j++) {
+      key = goog.object.PROTOTYPE_FIELDS_[j], Object.prototype.hasOwnProperty.call(source, key) && (target[key] = source[key]);
+    }
+  }
+};
+goog.object.create = function(var_args) {
+  var argLength = arguments.length;
+  if (1 == argLength && goog.isArray(arguments[0])) {
+    return goog.object.create.apply(null, arguments[0]);
+  }
+  if (argLength % 2) {
+    throw Error("Uneven number of arguments");
+  }
+  for (var rv = {}, i = 0; i < argLength; i += 2) {
+    rv[arguments[i]] = arguments[i + 1];
+  }
+  return rv;
+};
+goog.object.createSet = function(var_args) {
+  var argLength = arguments.length;
+  if (1 == argLength && goog.isArray(arguments[0])) {
+    return goog.object.createSet.apply(null, arguments[0]);
+  }
+  for (var rv = {}, i = 0; i < argLength; i++) {
+    rv[arguments[i]] = !0;
+  }
+  return rv;
+};
+goog.object.createImmutableView = function(obj) {
+  var result = obj;
+  Object.isFrozen && !Object.isFrozen(obj) && (result = Object.create(obj), Object.freeze(result));
+  return result;
+};
+goog.object.isImmutableView = function(obj) {
+  return !!Object.isFrozen && Object.isFrozen(obj);
+};
+goog.object.getAllPropertyNames = function(obj, opt_includeObjectPrototype, opt_includeFunctionPrototype) {
+  if (!obj) {
+    return [];
+  }
+  if (!Object.getOwnPropertyNames || !Object.getPrototypeOf) {
+    return goog.object.getKeys(obj);
+  }
+  for (var visitedSet = {}, proto = obj; proto && (proto !== Object.prototype || opt_includeObjectPrototype) && (proto !== Function.prototype || opt_includeFunctionPrototype);) {
+    for (var names = Object.getOwnPropertyNames(proto), i = 0; i < names.length; i++) {
+      visitedSet[names[i]] = !0;
+    }
+    proto = Object.getPrototypeOf(proto);
+  }
+  return goog.object.getKeys(visitedSet);
+};
 goog.dom.tags = {};
 goog.dom.tags.VOID_TAGS_ = {area:!0, base:!0, br:!0, col:!0, command:!0, embed:!0, hr:!0, img:!0, input:!0, keygen:!0, link:!0, meta:!0, param:!0, source:!0, track:!0, wbr:!0};
 goog.dom.tags.isVoidTag = function(tagName) {
   return !0 === goog.dom.tags.VOID_TAGS_[tagName];
 };
-goog.fs = {};
-goog.fs.url = {};
-goog.fs.url.createObjectUrl = function(blob) {
-  return goog.fs.url.getUrlObject_().createObjectURL(blob);
-};
-goog.fs.url.revokeObjectUrl = function(url) {
-  goog.fs.url.getUrlObject_().revokeObjectURL(url);
-};
-goog.fs.url.getUrlObject_ = function() {
-  var urlObject = goog.fs.url.findUrlObject_();
-  if (null != urlObject) {
-    return urlObject;
-  }
-  throw Error("This browser doesn't seem to support blob URLs");
-};
-goog.fs.url.findUrlObject_ = function() {
-  return goog.isDef(goog.global.URL) && goog.isDef(goog.global.URL.createObjectURL) ? goog.global.URL : goog.isDef(goog.global.webkitURL) && goog.isDef(goog.global.webkitURL.createObjectURL) ? goog.global.webkitURL : goog.isDef(goog.global.createObjectURL) ? goog.global : null;
-};
-goog.fs.url.browserSupportsObjectUrls = function() {
-  return null != goog.fs.url.findUrlObject_();
-};
+goog.html = {};
+goog.html.trustedtypes = {};
+goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY = goog.TRUSTED_TYPES_POLICY_NAME ? goog.createTrustedTypesPolicy(goog.TRUSTED_TYPES_POLICY_NAME + "#html") : null;
+goog.string = {};
 goog.string.TypedString = function() {
 };
 goog.string.Const = function(opt_token, opt_content) {
@@ -2251,7 +1804,6 @@ goog.string.Const.from = function(s) {
 goog.string.Const.TYPE_MARKER_ = {};
 goog.string.Const.GOOG_STRING_CONSTRUCTOR_TOKEN_PRIVATE_ = {};
 goog.string.Const.EMPTY = goog.string.Const.from("");
-goog.html = {};
 goog.html.SafeScript = function() {
   this.privateDoNotAccessOrElseSafeScriptWrappedValue_ = "";
   this.SAFE_SCRIPT_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.SafeScript.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
@@ -2272,12 +1824,15 @@ goog.html.SafeScript.fromJson = function(val) {
   return goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse(goog.html.SafeScript.stringify_(val));
 };
 goog.html.SafeScript.prototype.getTypedStringValue = function() {
-  return this.privateDoNotAccessOrElseSafeScriptWrappedValue_;
+  return this.privateDoNotAccessOrElseSafeScriptWrappedValue_.toString();
 };
 goog.DEBUG && (goog.html.SafeScript.prototype.toString = function() {
   return "SafeScript{" + this.privateDoNotAccessOrElseSafeScriptWrappedValue_ + "}";
 });
 goog.html.SafeScript.unwrap = function(safeScript) {
+  return goog.html.SafeScript.unwrapTrustedScript(safeScript).toString();
+};
+goog.html.SafeScript.unwrapTrustedScript = function(safeScript) {
   if (safeScript instanceof goog.html.SafeScript && safeScript.constructor === goog.html.SafeScript && safeScript.SAFE_SCRIPT_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeScript.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return safeScript.privateDoNotAccessOrElseSafeScriptWrappedValue_;
   }
@@ -2291,10 +1846,31 @@ goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse = function
   return (new goog.html.SafeScript).initSecurityPrivateDoNotAccessOrElse_(script);
 };
 goog.html.SafeScript.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(script) {
-  this.privateDoNotAccessOrElseSafeScriptWrappedValue_ = script;
+  this.privateDoNotAccessOrElseSafeScriptWrappedValue_ = goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY ? goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY.createScript(script) : script;
   return this;
 };
 goog.html.SafeScript.EMPTY = goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse("");
+goog.fs = {};
+goog.fs.url = {};
+goog.fs.url.createObjectUrl = function(blob) {
+  return goog.fs.url.getUrlObject_().createObjectURL(blob);
+};
+goog.fs.url.revokeObjectUrl = function(url) {
+  goog.fs.url.getUrlObject_().revokeObjectURL(url);
+};
+goog.fs.url.getUrlObject_ = function() {
+  var urlObject = goog.fs.url.findUrlObject_();
+  if (null != urlObject) {
+    return urlObject;
+  }
+  throw Error("This browser doesn't seem to support blob URLs");
+};
+goog.fs.url.findUrlObject_ = function() {
+  return goog.isDef(goog.global.URL) && goog.isDef(goog.global.URL.createObjectURL) ? goog.global.URL : goog.isDef(goog.global.webkitURL) && goog.isDef(goog.global.webkitURL.createObjectURL) ? goog.global.webkitURL : goog.isDef(goog.global.createObjectURL) ? goog.global : null;
+};
+goog.fs.url.browserSupportsObjectUrls = function() {
+  return null != goog.fs.url.findUrlObject_();
+};
 goog.i18n = {};
 goog.i18n.bidi = {};
 goog.i18n.bidi.FORCE_RTL = !1;
@@ -2427,11 +2003,12 @@ goog.i18n.bidi.DirectionalString = function() {
 };
 goog.html.TrustedResourceUrl = function() {
   this.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_ = "";
+  this.trustedURL_ = null;
   this.TRUSTED_RESOURCE_URL_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.TrustedResourceUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
 };
 goog.html.TrustedResourceUrl.prototype.implementsGoogStringTypedString = !0;
 goog.html.TrustedResourceUrl.prototype.getTypedStringValue = function() {
-  return this.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_;
+  return this.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_.toString();
 };
 goog.html.TrustedResourceUrl.prototype.implementsGoogI18nBidiDirectionalString = !0;
 goog.html.TrustedResourceUrl.prototype.getDirection = function() {
@@ -2445,11 +2022,17 @@ goog.DEBUG && (goog.html.TrustedResourceUrl.prototype.toString = function() {
   return "TrustedResourceUrl{" + this.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_ + "}";
 });
 goog.html.TrustedResourceUrl.unwrap = function(trustedResourceUrl) {
+  return goog.html.TrustedResourceUrl.unwrapTrustedScriptURL(trustedResourceUrl).toString();
+};
+goog.html.TrustedResourceUrl.unwrapTrustedScriptURL = function(trustedResourceUrl) {
   if (trustedResourceUrl instanceof goog.html.TrustedResourceUrl && trustedResourceUrl.constructor === goog.html.TrustedResourceUrl && trustedResourceUrl.TRUSTED_RESOURCE_URL_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.TrustedResourceUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return trustedResourceUrl.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_;
   }
   goog.asserts.fail("expected object of type TrustedResourceUrl, got '" + trustedResourceUrl + "' of type " + goog.typeOf(trustedResourceUrl));
   return "type_error:TrustedResourceUrl";
+};
+goog.html.TrustedResourceUrl.unwrapTrustedURL = function(trustedResourceUrl) {
+  return trustedResourceUrl.trustedURL_ ? trustedResourceUrl.trustedURL_ : goog.html.TrustedResourceUrl.unwrap(trustedResourceUrl);
 };
 goog.html.TrustedResourceUrl.format = function(format, args) {
   var formatStr = goog.string.Const.unwrap(format);
@@ -2466,7 +2049,7 @@ goog.html.TrustedResourceUrl.format = function(format, args) {
   return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(result);
 };
 goog.html.TrustedResourceUrl.FORMAT_MARKER_ = /%{(\w+)}/g;
-goog.html.TrustedResourceUrl.BASE_URL_ = /^(?:https:)?\/\/[0-9a-z.:[\]-]+\/|^\/[^\/\\]|^about:blank#/i;
+goog.html.TrustedResourceUrl.BASE_URL_ = /^((https:)?\/\/[0-9a-z.:[\]-]+\/|\/[^/\\]|[^:/\\%]+\/|[^:/\\%]*[?#]|about:blank#)/i;
 goog.html.TrustedResourceUrl.URL_PARAM_PARSER_ = /^([^?#]*)(\?[^#]*)?(#[\s\S]*)?/;
 goog.html.TrustedResourceUrl.formatWithParams = function(format, args, searchParams, opt_hashParams) {
   return goog.html.TrustedResourceUrl.format(format, args).cloneWithParams(searchParams, opt_hashParams);
@@ -2483,7 +2066,8 @@ goog.html.TrustedResourceUrl.fromConstants = function(parts) {
 goog.html.TrustedResourceUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
 goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse = function(url) {
   var trustedResourceUrl = new goog.html.TrustedResourceUrl;
-  trustedResourceUrl.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_ = url;
+  trustedResourceUrl.privateDoNotAccessOrElseTrustedResourceUrlWrappedValue_ = goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY ? goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY.createScriptURL(url) : url;
+  goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY && (trustedResourceUrl.trustedURL_ = goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY.createURL(url));
   return trustedResourceUrl;
 };
 goog.html.TrustedResourceUrl.stringifyParams_ = function(prefix, currentString, params) {
@@ -2501,25 +2085,110 @@ goog.html.TrustedResourceUrl.stringifyParams_ = function(prefix, currentString, 
   }
   return currentString;
 };
+goog.string.internal = {};
+goog.string.internal.startsWith = function(str, prefix) {
+  return 0 == str.lastIndexOf(prefix, 0);
+};
+goog.string.internal.endsWith = function(str, suffix) {
+  var l = str.length - suffix.length;
+  return 0 <= l && str.indexOf(suffix, l) == l;
+};
+goog.string.internal.caseInsensitiveStartsWith = function(str, prefix) {
+  return 0 == goog.string.internal.caseInsensitiveCompare(prefix, str.substr(0, prefix.length));
+};
+goog.string.internal.caseInsensitiveEndsWith = function(str, suffix) {
+  return 0 == goog.string.internal.caseInsensitiveCompare(suffix, str.substr(str.length - suffix.length, suffix.length));
+};
+goog.string.internal.caseInsensitiveEquals = function(str1, str2) {
+  return str1.toLowerCase() == str2.toLowerCase();
+};
+goog.string.internal.isEmptyOrWhitespace = function(str) {
+  return /^[\s\xa0]*$/.test(str);
+};
+goog.string.internal.trim = goog.TRUSTED_SITE && String.prototype.trim ? function(str) {
+  return str.trim();
+} : function(str) {
+  return /^[\s\xa0]*([\s\S]*?)[\s\xa0]*$/.exec(str)[1];
+};
+goog.string.internal.caseInsensitiveCompare = function(str1, str2) {
+  var test1 = String(str1).toLowerCase(), test2 = String(str2).toLowerCase();
+  return test1 < test2 ? -1 : test1 == test2 ? 0 : 1;
+};
+goog.string.internal.newLineToBr = function(str, opt_xml) {
+  return str.replace(/(\r\n|\r|\n)/g, opt_xml ? "<br />" : "<br>");
+};
+goog.string.internal.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
+  if (opt_isLikelyToContainHtmlChars) {
+    str = str.replace(goog.string.internal.AMP_RE_, "&amp;").replace(goog.string.internal.LT_RE_, "&lt;").replace(goog.string.internal.GT_RE_, "&gt;").replace(goog.string.internal.QUOT_RE_, "&quot;").replace(goog.string.internal.SINGLE_QUOTE_RE_, "&#39;").replace(goog.string.internal.NULL_RE_, "&#0;");
+  } else {
+    if (!goog.string.internal.ALL_RE_.test(str)) {
+      return str;
+    }
+    -1 != str.indexOf("&") && (str = str.replace(goog.string.internal.AMP_RE_, "&amp;"));
+    -1 != str.indexOf("<") && (str = str.replace(goog.string.internal.LT_RE_, "&lt;"));
+    -1 != str.indexOf(">") && (str = str.replace(goog.string.internal.GT_RE_, "&gt;"));
+    -1 != str.indexOf('"') && (str = str.replace(goog.string.internal.QUOT_RE_, "&quot;"));
+    -1 != str.indexOf("'") && (str = str.replace(goog.string.internal.SINGLE_QUOTE_RE_, "&#39;"));
+    -1 != str.indexOf("\x00") && (str = str.replace(goog.string.internal.NULL_RE_, "&#0;"));
+  }
+  return str;
+};
+goog.string.internal.AMP_RE_ = /&/g;
+goog.string.internal.LT_RE_ = /</g;
+goog.string.internal.GT_RE_ = />/g;
+goog.string.internal.QUOT_RE_ = /"/g;
+goog.string.internal.SINGLE_QUOTE_RE_ = /'/g;
+goog.string.internal.NULL_RE_ = /\x00/g;
+goog.string.internal.ALL_RE_ = /[\x00&<>"']/;
+goog.string.internal.whitespaceEscape = function(str, opt_xml) {
+  return goog.string.internal.newLineToBr(str.replace(/  /g, " &#160;"), opt_xml);
+};
+goog.string.internal.contains = function(str, subString) {
+  return -1 != str.indexOf(subString);
+};
+goog.string.internal.caseInsensitiveContains = function(str, subString) {
+  return goog.string.internal.contains(str.toLowerCase(), subString.toLowerCase());
+};
+goog.string.internal.compareVersions = function(version1, version2) {
+  for (var order = 0, v1Subs = goog.string.internal.trim(String(version1)).split("."), v2Subs = goog.string.internal.trim(String(version2)).split("."), subCount = Math.max(v1Subs.length, v2Subs.length), subIdx = 0; 0 == order && subIdx < subCount; subIdx++) {
+    var v1Sub = v1Subs[subIdx] || "", v2Sub = v2Subs[subIdx] || "";
+    do {
+      var v1Comp = /(\d*)(\D*)(.*)/.exec(v1Sub) || ["", "", "", ""], v2Comp = /(\d*)(\D*)(.*)/.exec(v2Sub) || ["", "", "", ""];
+      if (0 == v1Comp[0].length && 0 == v2Comp[0].length) {
+        break;
+      }
+      order = goog.string.internal.compareElements_(0 == v1Comp[1].length ? 0 : parseInt(v1Comp[1], 10), 0 == v2Comp[1].length ? 0 : parseInt(v2Comp[1], 10)) || goog.string.internal.compareElements_(0 == v1Comp[2].length, 0 == v2Comp[2].length) || goog.string.internal.compareElements_(v1Comp[2], v2Comp[2]);
+      v1Sub = v1Comp[3];
+      v2Sub = v2Comp[3];
+    } while (0 == order);
+  }
+  return order;
+};
+goog.string.internal.compareElements_ = function(left, right) {
+  return left < right ? -1 : left > right ? 1 : 0;
+};
 goog.html.SafeUrl = function() {
-  this.privateDoNotAccessOrElseSafeHtmlWrappedValue_ = "";
+  this.privateDoNotAccessOrElseSafeUrlWrappedValue_ = "";
   this.SAFE_URL_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = goog.html.SafeUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_;
 };
 goog.html.SafeUrl.INNOCUOUS_STRING = "about:invalid#zClosurez";
 goog.html.SafeUrl.prototype.implementsGoogStringTypedString = !0;
 goog.html.SafeUrl.prototype.getTypedStringValue = function() {
-  return this.privateDoNotAccessOrElseSafeHtmlWrappedValue_;
+  return this.privateDoNotAccessOrElseSafeUrlWrappedValue_.toString();
 };
 goog.html.SafeUrl.prototype.implementsGoogI18nBidiDirectionalString = !0;
 goog.html.SafeUrl.prototype.getDirection = function() {
   return goog.i18n.bidi.Dir.LTR;
 };
 goog.DEBUG && (goog.html.SafeUrl.prototype.toString = function() {
-  return "SafeUrl{" + this.privateDoNotAccessOrElseSafeHtmlWrappedValue_ + "}";
+  return "SafeUrl{" + this.privateDoNotAccessOrElseSafeUrlWrappedValue_ + "}";
 });
 goog.html.SafeUrl.unwrap = function(safeUrl) {
+  return goog.html.SafeUrl.unwrapTrustedURL(safeUrl).toString();
+};
+goog.html.SafeUrl.unwrapTrustedURL = function(safeUrl) {
   if (safeUrl instanceof goog.html.SafeUrl && safeUrl.constructor === goog.html.SafeUrl && safeUrl.SAFE_URL_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
-    return safeUrl.privateDoNotAccessOrElseSafeHtmlWrappedValue_;
+    return safeUrl.privateDoNotAccessOrElseSafeUrlWrappedValue_;
   }
   goog.asserts.fail("expected object of type SafeUrl, got '" + safeUrl + "' of type " + goog.typeOf(safeUrl));
   return "type_error:SafeUrl";
@@ -2527,18 +2196,21 @@ goog.html.SafeUrl.unwrap = function(safeUrl) {
 goog.html.SafeUrl.fromConstant = function(url) {
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(goog.string.Const.unwrap(url));
 };
-goog.html.SAFE_MIME_TYPE_PATTERN_ = /^(?:audio\/(?:3gpp2|3gpp|aac|L16|midi|mp3|mp4|mpeg|oga|ogg|opus|x-m4a|x-wav|wav|webm)|image\/(?:bmp|gif|jpeg|jpg|png|tiff|webp)|text\/csv|video\/(?:mpeg|mp4|ogg|webm|quicktime))$/i;
+goog.html.SAFE_MIME_TYPE_PATTERN_ = /^(?:audio\/(?:3gpp2|3gpp|aac|L16|midi|mp3|mp4|mpeg|oga|ogg|opus|x-m4a|x-wav|wav|webm)|image\/(?:bmp|gif|jpeg|jpg|png|tiff|webp|x-icon)|text\/csv|video\/(?:mpeg|mp4|ogg|webm|quicktime))(?:;\w+=(?:\w+|"[\w;=]+"))*$/i;
+goog.html.SafeUrl.isSafeMimeType = function(mimeType) {
+  return goog.html.SAFE_MIME_TYPE_PATTERN_.test(mimeType);
+};
 goog.html.SafeUrl.fromBlob = function(blob) {
   var url = goog.html.SAFE_MIME_TYPE_PATTERN_.test(blob.type) ? goog.fs.url.createObjectUrl(blob) : goog.html.SafeUrl.INNOCUOUS_STRING;
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
-goog.html.DATA_URL_PATTERN_ = /^data:([^;,]*);base64,[a-z0-9+\/]+=*$/i;
+goog.html.DATA_URL_PATTERN_ = /^data:([^,]*);base64,[a-z0-9+\/]+=*$/i;
 goog.html.SafeUrl.fromDataUrl = function(dataUrl) {
   var filteredDataUrl = dataUrl.replace(/(%0A|%0D)/g, ""), match = filteredDataUrl.match(goog.html.DATA_URL_PATTERN_), valid = match && goog.html.SAFE_MIME_TYPE_PATTERN_.test(match[1]);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(valid ? filteredDataUrl : goog.html.SafeUrl.INNOCUOUS_STRING);
 };
 goog.html.SafeUrl.fromTelUrl = function(telUrl) {
-  goog.string.caseInsensitiveStartsWith(telUrl, "tel:") || (telUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  goog.string.internal.caseInsensitiveStartsWith(telUrl, "tel:") || (telUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(telUrl);
 };
 goog.html.SIP_URL_PATTERN_ = /^sip[s]?:[+a-z0-9_.!$%&'*\/=^`{|}~-]+@([a-z0-9-]+\.)+[a-z0-9]{2,63}$/i;
@@ -2547,11 +2219,11 @@ goog.html.SafeUrl.fromSipUrl = function(sipUrl) {
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(sipUrl);
 };
 goog.html.SafeUrl.fromFacebookMessengerUrl = function(facebookMessengerUrl) {
-  goog.string.caseInsensitiveStartsWith(facebookMessengerUrl, "fb-messenger://share") || (facebookMessengerUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  goog.string.internal.caseInsensitiveStartsWith(facebookMessengerUrl, "fb-messenger://share") || (facebookMessengerUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(facebookMessengerUrl);
 };
 goog.html.SafeUrl.fromSmsUrl = function(smsUrl) {
-  goog.string.caseInsensitiveStartsWith(smsUrl, "sms:") && goog.html.SafeUrl.isSmsUrlBodyValid_(smsUrl) || (smsUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  goog.string.internal.caseInsensitiveStartsWith(smsUrl, "sms:") && goog.html.SafeUrl.isSmsUrlBodyValid_(smsUrl) || (smsUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(smsUrl);
 };
 goog.html.SafeUrl.isSmsUrlBodyValid_ = function(smsUrl) {
@@ -2574,6 +2246,10 @@ goog.html.SafeUrl.isSmsUrlBodyValid_ = function(smsUrl) {
     return !1;
   }
   return /^(?:[a-z0-9\-_.~]|%[0-9a-f]{2})+$/i.test(bodyValue);
+};
+goog.html.SafeUrl.fromSshUrl = function(sshUrl) {
+  goog.string.internal.caseInsensitiveStartsWith(sshUrl, "ssh://") || (sshUrl = goog.html.SafeUrl.INNOCUOUS_STRING);
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(sshUrl);
 };
 goog.html.SafeUrl.sanitizeChromeExtensionUrl = function(url, extensionId) {
   return goog.html.SafeUrl.sanitizeExtensionUrl_(/^chrome-extension:\/\/([^\/]+)\//, url, extensionId);
@@ -2609,18 +2285,24 @@ goog.html.SafeUrl.sanitize = function(url) {
   goog.html.SAFE_URL_PATTERN_.test(url) || (url = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
-goog.html.SafeUrl.sanitizeAssertUnchanged = function(url) {
+goog.html.SafeUrl.sanitizeAssertUnchanged = function(url, opt_allowDataUrl) {
   if (url instanceof goog.html.SafeUrl) {
     return url;
   }
   url = "object" == typeof url && url.implementsGoogStringTypedString ? url.getTypedStringValue() : String(url);
+  if (opt_allowDataUrl && /^data:/i.test(url)) {
+    var safeUrl = goog.html.SafeUrl.fromDataUrl(url);
+    if (safeUrl.getTypedStringValue() == url) {
+      return safeUrl;
+    }
+  }
   goog.asserts.assert(goog.html.SAFE_URL_PATTERN_.test(url), "%s does not match the safe URL pattern", url) || (url = goog.html.SafeUrl.INNOCUOUS_STRING);
   return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
 };
 goog.html.SafeUrl.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
 goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse = function(url) {
   var safeUrl = new goog.html.SafeUrl;
-  safeUrl.privateDoNotAccessOrElseSafeHtmlWrappedValue_ = url;
+  safeUrl.privateDoNotAccessOrElseSafeUrlWrappedValue_ = goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY ? goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY.createURL(url) : url;
   return safeUrl;
 };
 goog.html.SafeUrl.ABOUT_BLANK = goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse("about:blank");
@@ -2635,13 +2317,9 @@ goog.html.SafeStyle.fromConstant = function(style) {
   if (0 === styleString.length) {
     return goog.html.SafeStyle.EMPTY;
   }
-  goog.html.SafeStyle.checkStyle_(styleString);
-  goog.asserts.assert(goog.string.endsWith(styleString, ";"), "Last character of style string is not ';': " + styleString);
-  goog.asserts.assert(goog.string.contains(styleString, ":"), "Style string must contain at least one ':', to specify a \"name: value\" pair: " + styleString);
+  goog.asserts.assert(goog.string.internal.endsWith(styleString, ";"), "Last character of style string is not ';': " + styleString);
+  goog.asserts.assert(goog.string.internal.contains(styleString, ":"), "Style string must contain at least one ':', to specify a \"name: value\" pair: " + styleString);
   return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(styleString);
-};
-goog.html.SafeStyle.checkStyle_ = function(style) {
-  goog.asserts.assert(!/[<>]/.test(style), "Forbidden characters in style string: " + style);
 };
 goog.html.SafeStyle.prototype.getTypedStringValue = function() {
   return this.privateDoNotAccessOrElseSafeStyleWrappedValue_;
@@ -2674,18 +2352,16 @@ goog.html.SafeStyle.create = function(map) {
     var value = map[name];
     null != value && (value = goog.isArray(value) ? goog.array.map(value, goog.html.SafeStyle.sanitizePropertyValue_).join(" ") : goog.html.SafeStyle.sanitizePropertyValue_(value), style += name + ":" + value + ";");
   }
-  if (!style) {
-    return goog.html.SafeStyle.EMPTY;
-  }
-  goog.html.SafeStyle.checkStyle_(style);
-  return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style);
+  return style ? goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style) : goog.html.SafeStyle.EMPTY;
 };
 goog.html.SafeStyle.sanitizePropertyValue_ = function(value) {
   if (value instanceof goog.html.SafeUrl) {
     return 'url("' + goog.html.SafeUrl.unwrap(value).replace(/</g, "%3c").replace(/[\\"]/g, "\\$&") + '")';
   }
   var result = value instanceof goog.string.Const ? goog.string.Const.unwrap(value) : goog.html.SafeStyle.sanitizePropertyValueString_(String(value));
-  goog.asserts.assert(!/[{;}]/.test(result), "Value does not allow [{;}].");
+  if (/[{;}]/.test(result)) {
+    throw new goog.asserts.AssertionError("Value does not allow [{;}], got: %s.", [result]);
+  }
   return result;
 };
 goog.html.SafeStyle.sanitizePropertyValueString_ = function(value) {
@@ -2765,7 +2441,7 @@ goog.html.SafeStyleSheet = function() {
 goog.html.SafeStyleSheet.prototype.implementsGoogStringTypedString = !0;
 goog.html.SafeStyleSheet.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ = {};
 goog.html.SafeStyleSheet.createRule = function(selector, style) {
-  if (goog.string.contains(selector, "<")) {
+  if (goog.string.internal.contains(selector, "<")) {
     throw Error("Selector does not allow '<', got: " + selector);
   }
   var selectorToCheck = selector.replace(/('|")((?!\1)[^\r\n\f\\]|\\[\s\S])*\1/g, "");
@@ -2776,7 +2452,7 @@ goog.html.SafeStyleSheet.createRule = function(selector, style) {
     throw Error("() and [] in selector must be balanced, got: " + selector);
   }
   style instanceof goog.html.SafeStyle || (style = goog.html.SafeStyle.create(style));
-  var styleSheet = selector + "{" + goog.html.SafeStyle.unwrap(style) + "}";
+  var styleSheet = selector + "{" + goog.html.SafeStyle.unwrap(style).replace(/</g, "\\3C ") + "}";
   return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheet);
 };
 goog.html.SafeStyleSheet.hasBalancedBrackets_ = function(s) {
@@ -2804,7 +2480,7 @@ goog.html.SafeStyleSheet.fromConstant = function(styleSheet) {
   if (0 === styleSheetString.length) {
     return goog.html.SafeStyleSheet.EMPTY;
   }
-  goog.asserts.assert(!goog.string.contains(styleSheetString, "<"), "Forbidden '<' character in style sheet string: " + styleSheetString);
+  goog.asserts.assert(!goog.string.internal.contains(styleSheetString, "<"), "Forbidden '<' character in style sheet string: " + styleSheetString);
   return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheetString);
 };
 goog.html.SafeStyleSheet.prototype.getTypedStringValue = function() {
@@ -2852,10 +2528,10 @@ goog.labs.userAgent.util.getUserAgent = function() {
   return goog.labs.userAgent.util.userAgent_;
 };
 goog.labs.userAgent.util.matchUserAgent = function(str) {
-  return goog.string.contains(goog.labs.userAgent.util.getUserAgent(), str);
+  return goog.string.internal.contains(goog.labs.userAgent.util.getUserAgent(), str);
 };
 goog.labs.userAgent.util.matchUserAgentIgnoreCase = function(str) {
-  return goog.string.caseInsensitiveContains(goog.labs.userAgent.util.getUserAgent(), str);
+  return goog.string.internal.caseInsensitiveContains(goog.labs.userAgent.util.getUserAgent(), str);
 };
 goog.labs.userAgent.util.extractVersionTuples = function(userAgent) {
   for (var versionRegExp = /(\w[\w ]+)\/([^\s]+)\s*(?:\((.*?)\))?/g, data = [], match; match = versionRegExp.exec(userAgent);) {
@@ -2874,16 +2550,16 @@ goog.labs.userAgent.browser.matchEdge_ = function() {
   return goog.labs.userAgent.util.matchUserAgent("Edge");
 };
 goog.labs.userAgent.browser.matchFirefox_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Firefox");
+  return goog.labs.userAgent.util.matchUserAgent("Firefox") || goog.labs.userAgent.util.matchUserAgent("FxiOS");
 };
 goog.labs.userAgent.browser.matchSafari_ = function() {
-  return goog.labs.userAgent.util.matchUserAgent("Safari") && !(goog.labs.userAgent.browser.matchChrome_() || goog.labs.userAgent.browser.matchCoast_() || goog.labs.userAgent.browser.matchOpera_() || goog.labs.userAgent.browser.matchEdge_() || goog.labs.userAgent.browser.isSilk() || goog.labs.userAgent.util.matchUserAgent("Android"));
+  return goog.labs.userAgent.util.matchUserAgent("Safari") && !(goog.labs.userAgent.browser.matchChrome_() || goog.labs.userAgent.browser.matchCoast_() || goog.labs.userAgent.browser.matchOpera_() || goog.labs.userAgent.browser.matchEdge_() || goog.labs.userAgent.browser.matchFirefox_() || goog.labs.userAgent.browser.isSilk() || goog.labs.userAgent.util.matchUserAgent("Android"));
 };
 goog.labs.userAgent.browser.matchCoast_ = function() {
   return goog.labs.userAgent.util.matchUserAgent("Coast");
 };
 goog.labs.userAgent.browser.matchIosWebview_ = function() {
-  return (goog.labs.userAgent.util.matchUserAgent("iPad") || goog.labs.userAgent.util.matchUserAgent("iPhone")) && !goog.labs.userAgent.browser.matchSafari_() && !goog.labs.userAgent.browser.matchChrome_() && !goog.labs.userAgent.browser.matchCoast_() && goog.labs.userAgent.util.matchUserAgent("AppleWebKit");
+  return (goog.labs.userAgent.util.matchUserAgent("iPad") || goog.labs.userAgent.util.matchUserAgent("iPhone")) && !goog.labs.userAgent.browser.matchSafari_() && !goog.labs.userAgent.browser.matchChrome_() && !goog.labs.userAgent.browser.matchCoast_() && !goog.labs.userAgent.browser.matchFirefox_() && goog.labs.userAgent.util.matchUserAgent("AppleWebKit");
 };
 goog.labs.userAgent.browser.matchChrome_ = function() {
   return (goog.labs.userAgent.util.matchUserAgent("Chrome") || goog.labs.userAgent.util.matchUserAgent("CriOS")) && !goog.labs.userAgent.browser.matchEdge_();
@@ -2930,7 +2606,7 @@ goog.labs.userAgent.browser.getVersion = function() {
   return tuple && tuple[1] || "";
 };
 goog.labs.userAgent.browser.isVersionOrHigher = function(version) {
-  return 0 <= goog.string.compareVersions(goog.labs.userAgent.browser.getVersion(), version);
+  return 0 <= goog.string.internal.compareVersions(goog.labs.userAgent.browser.getVersion(), version);
 };
 goog.labs.userAgent.browser.getIEVersion_ = function(userAgent) {
   var rv = /rv: *([\d\.]*)/.exec(userAgent);
@@ -2975,12 +2651,15 @@ goog.html.SafeHtml.prototype.getDirection = function() {
 };
 goog.html.SafeHtml.prototype.implementsGoogStringTypedString = !0;
 goog.html.SafeHtml.prototype.getTypedStringValue = function() {
-  return this.privateDoNotAccessOrElseSafeHtmlWrappedValue_;
+  return this.privateDoNotAccessOrElseSafeHtmlWrappedValue_.toString();
 };
 goog.DEBUG && (goog.html.SafeHtml.prototype.toString = function() {
   return "SafeHtml{" + this.privateDoNotAccessOrElseSafeHtmlWrappedValue_ + "}";
 });
 goog.html.SafeHtml.unwrap = function(safeHtml) {
+  return goog.html.SafeHtml.unwrapTrustedHTML(safeHtml).toString();
+};
+goog.html.SafeHtml.unwrapTrustedHTML = function(safeHtml) {
   if (safeHtml instanceof goog.html.SafeHtml && safeHtml.constructor === goog.html.SafeHtml && safeHtml.SAFE_HTML_TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_ === goog.html.SafeHtml.TYPE_MARKER_GOOG_HTML_SECURITY_PRIVATE_) {
     return safeHtml.privateDoNotAccessOrElseSafeHtmlWrappedValue_;
   }
@@ -2993,21 +2672,21 @@ goog.html.SafeHtml.htmlEscape = function(textOrHtml) {
   }
   var textIsObject = "object" == typeof textOrHtml, dir = null;
   textIsObject && textOrHtml.implementsGoogI18nBidiDirectionalString && (dir = textOrHtml.getDirection());
-  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(goog.string.htmlEscape(textIsObject && textOrHtml.implementsGoogStringTypedString ? textOrHtml.getTypedStringValue() : String(textOrHtml)), dir);
+  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(goog.string.internal.htmlEscape(textIsObject && textOrHtml.implementsGoogStringTypedString ? textOrHtml.getTypedStringValue() : String(textOrHtml)), dir);
 };
 goog.html.SafeHtml.htmlEscapePreservingNewlines = function(textOrHtml) {
   if (textOrHtml instanceof goog.html.SafeHtml) {
     return textOrHtml;
   }
   var html = goog.html.SafeHtml.htmlEscape(textOrHtml);
-  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(goog.string.newLineToBr(goog.html.SafeHtml.unwrap(html)), html.getDirection());
+  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(goog.string.internal.newLineToBr(goog.html.SafeHtml.unwrap(html)), html.getDirection());
 };
 goog.html.SafeHtml.htmlEscapePreservingNewlinesAndSpaces = function(textOrHtml) {
   if (textOrHtml instanceof goog.html.SafeHtml) {
     return textOrHtml;
   }
   var html = goog.html.SafeHtml.htmlEscape(textOrHtml);
-  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(goog.string.whitespaceEscape(goog.html.SafeHtml.unwrap(html)), html.getDirection());
+  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(goog.string.internal.whitespaceEscape(goog.html.SafeHtml.unwrap(html)), html.getDirection());
 };
 goog.html.SafeHtml.from = goog.html.SafeHtml.htmlEscape;
 goog.html.SafeHtml.VALID_NAMES_IN_TAG_ = /^[a-zA-Z0-9-]+$/;
@@ -3078,7 +2757,7 @@ goog.html.SafeHtml.createStyle = function(styleSheet, opt_attributes) {
 };
 goog.html.SafeHtml.createMetaRefresh = function(url, opt_secs) {
   var unwrappedUrl = goog.html.SafeUrl.unwrap(goog.html.SafeUrl.sanitize(url));
-  (goog.labs.userAgent.browser.isIE() || goog.labs.userAgent.browser.isEdge()) && goog.string.contains(unwrappedUrl, ";") && (unwrappedUrl = "'" + unwrappedUrl.replace(/'/g, "%27") + "'");
+  (goog.labs.userAgent.browser.isIE() || goog.labs.userAgent.browser.isEdge()) && goog.string.internal.contains(unwrappedUrl, ";") && (unwrappedUrl = "'" + unwrappedUrl.replace(/'/g, "%27") + "'");
   return goog.html.SafeHtml.createSafeHtmlTagSecurityPrivateDoNotAccessOrElse("meta", {"http-equiv":"refresh", content:(opt_secs || 0) + "; url=" + unwrappedUrl});
 };
 goog.html.SafeHtml.getAttrNameAndValue_ = function(tagName, name, value) {
@@ -3110,7 +2789,7 @@ goog.html.SafeHtml.getAttrNameAndValue_ = function(tagName, name, value) {
   }
   value.implementsGoogStringTypedString && (value = value.getTypedStringValue());
   goog.asserts.assert(goog.isString(value) || goog.isNumber(value), "String or number value expected, got " + typeof value + " with value: " + value);
-  return name + '="' + goog.string.htmlEscape(String(value)) + '"';
+  return name + '="' + goog.string.internal.htmlEscape(String(value)) + '"';
 };
 goog.html.SafeHtml.getStyleValue_ = function(value) {
   if (!goog.isObject(value)) {
@@ -3124,19 +2803,22 @@ goog.html.SafeHtml.createWithDir = function(dir, tagName, opt_attributes, opt_co
   html.dir_ = dir;
   return html;
 };
-goog.html.SafeHtml.concat = function(var_args) {
-  var dir = goog.i18n.bidi.Dir.NEUTRAL, content = "", addArgument = function(argument) {
+goog.html.SafeHtml.join = function(separator, parts) {
+  var separatorHtml = goog.html.SafeHtml.htmlEscape(separator), dir = separatorHtml.getDirection(), content = [], addArgument = function(argument) {
     if (goog.isArray(argument)) {
       goog.array.forEach(argument, addArgument);
     } else {
       var html = goog.html.SafeHtml.htmlEscape(argument);
-      content += goog.html.SafeHtml.unwrap(html);
+      content.push(goog.html.SafeHtml.unwrap(html));
       var htmlDir = html.getDirection();
       dir == goog.i18n.bidi.Dir.NEUTRAL ? dir = htmlDir : htmlDir != goog.i18n.bidi.Dir.NEUTRAL && dir != htmlDir && (dir = null);
     }
   };
-  goog.array.forEach(arguments, addArgument);
-  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(content, dir);
+  goog.array.forEach(parts, addArgument);
+  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(content.join(goog.html.SafeHtml.unwrap(separatorHtml)), dir);
+};
+goog.html.SafeHtml.concat = function(var_args) {
+  return goog.html.SafeHtml.join(goog.html.SafeHtml.EMPTY, Array.prototype.slice.call(arguments));
 };
 goog.html.SafeHtml.concatWithDir = function(dir, var_args) {
   var html = goog.html.SafeHtml.concat(goog.array.slice(arguments, 1));
@@ -3148,7 +2830,7 @@ goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse = function(htm
   return (new goog.html.SafeHtml).initSecurityPrivateDoNotAccessOrElse_(html, dir);
 };
 goog.html.SafeHtml.prototype.initSecurityPrivateDoNotAccessOrElse_ = function(html, dir) {
-  this.privateDoNotAccessOrElseSafeHtmlWrappedValue_ = html;
+  this.privateDoNotAccessOrElseSafeHtmlWrappedValue_ = goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY ? goog.html.trustedtypes.PRIVATE_DO_NOT_ACCESS_OR_ELSE_POLICY.createHTML(html) : html;
   this.dir_ = dir;
   return this;
 };
@@ -3202,6 +2884,906 @@ goog.html.SafeHtml.combineAttributes = function(fixedAttributes, defaultAttribut
 goog.html.SafeHtml.DOCTYPE_HTML = goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse("<!DOCTYPE html>", goog.i18n.bidi.Dir.NEUTRAL);
 goog.html.SafeHtml.EMPTY = goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse("", goog.i18n.bidi.Dir.NEUTRAL);
 goog.html.SafeHtml.BR = goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse("<br>", goog.i18n.bidi.Dir.NEUTRAL);
+goog.html.uncheckedconversions = {};
+goog.html.uncheckedconversions.safeHtmlFromStringKnownToSatisfyTypeContract = function(justification, html, opt_dir) {
+  goog.asserts.assertString(goog.string.Const.unwrap(justification), "must provide justification");
+  goog.asserts.assert(!goog.string.internal.isEmptyOrWhitespace(goog.string.Const.unwrap(justification)), "must provide non-empty justification");
+  return goog.html.SafeHtml.createSafeHtmlSecurityPrivateDoNotAccessOrElse(html, opt_dir || null);
+};
+goog.html.uncheckedconversions.safeScriptFromStringKnownToSatisfyTypeContract = function(justification, script) {
+  goog.asserts.assertString(goog.string.Const.unwrap(justification), "must provide justification");
+  goog.asserts.assert(!goog.string.internal.isEmptyOrWhitespace(goog.string.Const.unwrap(justification)), "must provide non-empty justification");
+  return goog.html.SafeScript.createSafeScriptSecurityPrivateDoNotAccessOrElse(script);
+};
+goog.html.uncheckedconversions.safeStyleFromStringKnownToSatisfyTypeContract = function(justification, style) {
+  goog.asserts.assertString(goog.string.Const.unwrap(justification), "must provide justification");
+  goog.asserts.assert(!goog.string.internal.isEmptyOrWhitespace(goog.string.Const.unwrap(justification)), "must provide non-empty justification");
+  return goog.html.SafeStyle.createSafeStyleSecurityPrivateDoNotAccessOrElse(style);
+};
+goog.html.uncheckedconversions.safeStyleSheetFromStringKnownToSatisfyTypeContract = function(justification, styleSheet) {
+  goog.asserts.assertString(goog.string.Const.unwrap(justification), "must provide justification");
+  goog.asserts.assert(!goog.string.internal.isEmptyOrWhitespace(goog.string.Const.unwrap(justification)), "must provide non-empty justification");
+  return goog.html.SafeStyleSheet.createSafeStyleSheetSecurityPrivateDoNotAccessOrElse(styleSheet);
+};
+goog.html.uncheckedconversions.safeUrlFromStringKnownToSatisfyTypeContract = function(justification, url) {
+  goog.asserts.assertString(goog.string.Const.unwrap(justification), "must provide justification");
+  goog.asserts.assert(!goog.string.internal.isEmptyOrWhitespace(goog.string.Const.unwrap(justification)), "must provide non-empty justification");
+  return goog.html.SafeUrl.createSafeUrlSecurityPrivateDoNotAccessOrElse(url);
+};
+goog.html.uncheckedconversions.trustedResourceUrlFromStringKnownToSatisfyTypeContract = function(justification, url) {
+  goog.asserts.assertString(goog.string.Const.unwrap(justification), "must provide justification");
+  goog.asserts.assert(!goog.string.internal.isEmptyOrWhitespace(goog.string.Const.unwrap(justification)), "must provide non-empty justification");
+  return goog.html.TrustedResourceUrl.createTrustedResourceUrlSecurityPrivateDoNotAccessOrElse(url);
+};
+goog.dom.safe = {};
+goog.dom.safe.InsertAdjacentHtmlPosition = {AFTERBEGIN:"afterbegin", AFTEREND:"afterend", BEFOREBEGIN:"beforebegin", BEFOREEND:"beforeend"};
+goog.dom.safe.insertAdjacentHtml = function(node, position, html) {
+  node.insertAdjacentHTML(position, goog.html.SafeHtml.unwrapTrustedHTML(html));
+};
+goog.dom.safe.SET_INNER_HTML_DISALLOWED_TAGS_ = {MATH:!0, SCRIPT:!0, STYLE:!0, SVG:!0, TEMPLATE:!0};
+goog.dom.safe.isInnerHtmlCleanupRecursive_ = goog.functions.cacheReturnValue(function() {
+  if (goog.DEBUG && "undefined" === typeof document) {
+    return !1;
+  }
+  var div = document.createElement("div"), childDiv = document.createElement("div");
+  childDiv.appendChild(document.createElement("div"));
+  div.appendChild(childDiv);
+  if (goog.DEBUG && !div.firstChild) {
+    return !1;
+  }
+  var innerChild = div.firstChild.firstChild;
+  div.innerHTML = goog.html.SafeHtml.unwrapTrustedHTML(goog.html.SafeHtml.EMPTY);
+  return !innerChild.parentElement;
+});
+goog.dom.safe.unsafeSetInnerHtmlDoNotUseOrElse = function(elem, html) {
+  if (goog.dom.safe.isInnerHtmlCleanupRecursive_()) {
+    for (; elem.lastChild;) {
+      elem.removeChild(elem.lastChild);
+    }
+  }
+  elem.innerHTML = goog.html.SafeHtml.unwrapTrustedHTML(html);
+};
+goog.dom.safe.setInnerHtml = function(elem, html) {
+  if (goog.asserts.ENABLE_ASSERTS && goog.dom.safe.SET_INNER_HTML_DISALLOWED_TAGS_[elem.tagName.toUpperCase()]) {
+    throw Error("goog.dom.safe.setInnerHtml cannot be used to set content of " + elem.tagName + ".");
+  }
+  goog.dom.safe.unsafeSetInnerHtmlDoNotUseOrElse(elem, html);
+};
+goog.dom.safe.setOuterHtml = function(elem, html) {
+  elem.outerHTML = goog.html.SafeHtml.unwrapTrustedHTML(html);
+};
+goog.dom.safe.setFormElementAction = function(form, url) {
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  goog.dom.asserts.assertIsHTMLFormElement(form).action = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setButtonFormAction = function(button, url) {
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  goog.dom.asserts.assertIsHTMLButtonElement(button).formAction = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setInputFormAction = function(input, url) {
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  goog.dom.asserts.assertIsHTMLInputElement(input).formAction = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setStyle = function(elem, style) {
+  elem.style.cssText = goog.html.SafeStyle.unwrap(style);
+};
+goog.dom.safe.documentWrite = function(doc, html) {
+  doc.write(goog.html.SafeHtml.unwrapTrustedHTML(html));
+};
+goog.dom.safe.setAnchorHref = function(anchor, url) {
+  goog.dom.asserts.assertIsHTMLAnchorElement(anchor);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  anchor.href = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setImageSrc = function(imageElement, url) {
+  goog.dom.asserts.assertIsHTMLImageElement(imageElement);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url, /^data:image\//i.test(url));
+  imageElement.src = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setAudioSrc = function(audioElement, url) {
+  goog.dom.asserts.assertIsHTMLAudioElement(audioElement);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url, /^data:audio\//i.test(url));
+  audioElement.src = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setVideoSrc = function(videoElement, url) {
+  goog.dom.asserts.assertIsHTMLVideoElement(videoElement);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url, /^data:video\//i.test(url));
+  videoElement.src = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.setEmbedSrc = function(embed, url) {
+  goog.dom.asserts.assertIsHTMLEmbedElement(embed);
+  embed.src = goog.html.TrustedResourceUrl.unwrapTrustedScriptURL(url);
+};
+goog.dom.safe.setFrameSrc = function(frame, url) {
+  goog.dom.asserts.assertIsHTMLFrameElement(frame);
+  frame.src = goog.html.TrustedResourceUrl.unwrapTrustedURL(url);
+};
+goog.dom.safe.setIframeSrc = function(iframe, url) {
+  goog.dom.asserts.assertIsHTMLIFrameElement(iframe);
+  iframe.src = goog.html.TrustedResourceUrl.unwrapTrustedURL(url);
+};
+goog.dom.safe.setIframeSrcdoc = function(iframe, html) {
+  goog.dom.asserts.assertIsHTMLIFrameElement(iframe);
+  iframe.srcdoc = goog.html.SafeHtml.unwrapTrustedHTML(html);
+};
+goog.dom.safe.setLinkHrefAndRel = function(link, url, rel) {
+  goog.dom.asserts.assertIsHTMLLinkElement(link);
+  link.rel = rel;
+  goog.string.internal.caseInsensitiveContains(rel, "stylesheet") ? (goog.asserts.assert(url instanceof goog.html.TrustedResourceUrl, 'URL must be TrustedResourceUrl because "rel" contains "stylesheet"'), link.href = goog.html.TrustedResourceUrl.unwrapTrustedURL(url)) : link.href = url instanceof goog.html.TrustedResourceUrl ? goog.html.TrustedResourceUrl.unwrapTrustedURL(url) : url instanceof goog.html.SafeUrl ? goog.html.SafeUrl.unwrapTrustedURL(url) : goog.html.SafeUrl.unwrapTrustedURL(goog.html.SafeUrl.sanitizeAssertUnchanged(url));
+};
+goog.dom.safe.setObjectData = function(object, url) {
+  goog.dom.asserts.assertIsHTMLObjectElement(object);
+  object.data = goog.html.TrustedResourceUrl.unwrapTrustedScriptURL(url);
+};
+goog.dom.safe.setScriptSrc = function(script, url) {
+  goog.dom.asserts.assertIsHTMLScriptElement(script);
+  script.src = goog.html.TrustedResourceUrl.unwrapTrustedScriptURL(url);
+  var nonce = goog.getScriptNonce();
+  nonce && script.setAttribute("nonce", nonce);
+};
+goog.dom.safe.setScriptContent = function(script, content) {
+  goog.dom.asserts.assertIsHTMLScriptElement(script);
+  script.text = goog.html.SafeScript.unwrapTrustedScript(content);
+  var nonce = goog.getScriptNonce();
+  nonce && script.setAttribute("nonce", nonce);
+};
+goog.dom.safe.setLocationHref = function(loc, url) {
+  goog.dom.asserts.assertIsLocation(loc);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  loc.href = goog.html.SafeUrl.unwrapTrustedURL(safeUrl);
+};
+goog.dom.safe.assignLocation = function(loc, url) {
+  goog.dom.asserts.assertIsLocation(loc);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  loc.assign(goog.html.SafeUrl.unwrapTrustedURL(safeUrl));
+};
+goog.dom.safe.replaceLocation = function(loc, url) {
+  goog.dom.asserts.assertIsLocation(loc);
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  loc.replace(goog.html.SafeUrl.unwrapTrustedURL(safeUrl));
+};
+goog.dom.safe.openInWindow = function(url, opt_openerWin, opt_name, opt_specs, opt_replace) {
+  var safeUrl = url instanceof goog.html.SafeUrl ? url : goog.html.SafeUrl.sanitizeAssertUnchanged(url);
+  return (opt_openerWin || goog.global).open(goog.html.SafeUrl.unwrapTrustedURL(safeUrl), opt_name ? goog.string.Const.unwrap(opt_name) : "", opt_specs, opt_replace);
+};
+goog.dom.safe.parseFromStringHtml = function(parser, html) {
+  return goog.dom.safe.parseFromString(parser, html, "text/html");
+};
+goog.dom.safe.parseFromString = function(parser, content, type) {
+  return parser.parseFromString(goog.html.SafeHtml.unwrapTrustedHTML(content), type);
+};
+goog.dom.safe.createImageFromBlob = function(blob) {
+  if (!/^image\/.*/g.test(blob.type)) {
+    throw Error("goog.dom.safe.createImageFromBlob only accepts MIME type image/.*.");
+  }
+  var objectUrl = goog.global.URL.createObjectURL(blob), image = new goog.global.Image;
+  image.onload = function() {
+    goog.global.URL.revokeObjectURL(objectUrl);
+  };
+  goog.dom.safe.setImageSrc(image, goog.html.uncheckedconversions.safeUrlFromStringKnownToSatisfyTypeContract(goog.string.Const.from("Image blob URL."), objectUrl));
+  return image;
+};
+goog.string.DETECT_DOUBLE_ESCAPING = !1;
+goog.string.FORCE_NON_DOM_HTML_UNESCAPING = !1;
+goog.string.Unicode = {NBSP:"\u00a0"};
+goog.string.startsWith = goog.string.internal.startsWith;
+goog.string.endsWith = goog.string.internal.endsWith;
+goog.string.caseInsensitiveStartsWith = goog.string.internal.caseInsensitiveStartsWith;
+goog.string.caseInsensitiveEndsWith = goog.string.internal.caseInsensitiveEndsWith;
+goog.string.caseInsensitiveEquals = goog.string.internal.caseInsensitiveEquals;
+goog.string.subs = function(str, var_args) {
+  for (var splitParts = str.split("%s"), returnString = "", subsArguments = Array.prototype.slice.call(arguments, 1); subsArguments.length && 1 < splitParts.length;) {
+    returnString += splitParts.shift() + subsArguments.shift();
+  }
+  return returnString + splitParts.join("%s");
+};
+goog.string.collapseWhitespace = function(str) {
+  return str.replace(/[\s\xa0]+/g, " ").replace(/^\s+|\s+$/g, "");
+};
+goog.string.isEmptyOrWhitespace = goog.string.internal.isEmptyOrWhitespace;
+goog.string.isEmptyString = function(str) {
+  return 0 == str.length;
+};
+goog.string.isEmpty = goog.string.isEmptyOrWhitespace;
+goog.string.isEmptyOrWhitespaceSafe = function(str) {
+  return goog.string.isEmptyOrWhitespace(goog.string.makeSafe(str));
+};
+goog.string.isEmptySafe = goog.string.isEmptyOrWhitespaceSafe;
+goog.string.isBreakingWhitespace = function(str) {
+  return !/[^\t\n\r ]/.test(str);
+};
+goog.string.isAlpha = function(str) {
+  return !/[^a-zA-Z]/.test(str);
+};
+goog.string.isNumeric = function(str) {
+  return !/[^0-9]/.test(str);
+};
+goog.string.isAlphaNumeric = function(str) {
+  return !/[^a-zA-Z0-9]/.test(str);
+};
+goog.string.isSpace = function(ch) {
+  return " " == ch;
+};
+goog.string.isUnicodeChar = function(ch) {
+  return 1 == ch.length && " " <= ch && "~" >= ch || "\u0080" <= ch && "\ufffd" >= ch;
+};
+goog.string.stripNewlines = function(str) {
+  return str.replace(/(\r\n|\r|\n)+/g, " ");
+};
+goog.string.canonicalizeNewlines = function(str) {
+  return str.replace(/(\r\n|\r|\n)/g, "\n");
+};
+goog.string.normalizeWhitespace = function(str) {
+  return str.replace(/\xa0|\s/g, " ");
+};
+goog.string.normalizeSpaces = function(str) {
+  return str.replace(/\xa0|[ \t]+/g, " ");
+};
+goog.string.collapseBreakingSpaces = function(str) {
+  return str.replace(/[\t\r\n ]+/g, " ").replace(/^[\t\r\n ]+|[\t\r\n ]+$/g, "");
+};
+goog.string.trim = goog.string.internal.trim;
+goog.string.trimLeft = function(str) {
+  return str.replace(/^[\s\xa0]+/, "");
+};
+goog.string.trimRight = function(str) {
+  return str.replace(/[\s\xa0]+$/, "");
+};
+goog.string.caseInsensitiveCompare = goog.string.internal.caseInsensitiveCompare;
+goog.string.numberAwareCompare_ = function(str1, str2, tokenizerRegExp) {
+  if (str1 == str2) {
+    return 0;
+  }
+  if (!str1) {
+    return -1;
+  }
+  if (!str2) {
+    return 1;
+  }
+  for (var tokens1 = str1.toLowerCase().match(tokenizerRegExp), tokens2 = str2.toLowerCase().match(tokenizerRegExp), count = Math.min(tokens1.length, tokens2.length), i = 0; i < count; i++) {
+    var a = tokens1[i], b = tokens2[i];
+    if (a != b) {
+      var num1 = parseInt(a, 10);
+      if (!isNaN(num1)) {
+        var num2 = parseInt(b, 10);
+        if (!isNaN(num2) && num1 - num2) {
+          return num1 - num2;
+        }
+      }
+      return a < b ? -1 : 1;
+    }
+  }
+  return tokens1.length != tokens2.length ? tokens1.length - tokens2.length : str1 < str2 ? -1 : 1;
+};
+goog.string.intAwareCompare = function(str1, str2) {
+  return goog.string.numberAwareCompare_(str1, str2, /\d+|\D+/g);
+};
+goog.string.floatAwareCompare = function(str1, str2) {
+  return goog.string.numberAwareCompare_(str1, str2, /\d+|\.\d+|\D+/g);
+};
+goog.string.numerateCompare = goog.string.floatAwareCompare;
+goog.string.urlEncode = function(str) {
+  return encodeURIComponent(String(str));
+};
+goog.string.urlDecode = function(str) {
+  return decodeURIComponent(str.replace(/\+/g, " "));
+};
+goog.string.newLineToBr = goog.string.internal.newLineToBr;
+goog.string.htmlEscape = function(str, opt_isLikelyToContainHtmlChars) {
+  str = goog.string.internal.htmlEscape(str, opt_isLikelyToContainHtmlChars);
+  goog.string.DETECT_DOUBLE_ESCAPING && (str = str.replace(goog.string.E_RE_, "&#101;"));
+  return str;
+};
+goog.string.E_RE_ = /e/g;
+goog.string.unescapeEntities = function(str) {
+  return goog.string.contains(str, "&") ? !goog.string.FORCE_NON_DOM_HTML_UNESCAPING && "document" in goog.global ? goog.string.unescapeEntitiesUsingDom_(str) : goog.string.unescapePureXmlEntities_(str) : str;
+};
+goog.string.unescapeEntitiesWithDocument = function(str, document) {
+  return goog.string.contains(str, "&") ? goog.string.unescapeEntitiesUsingDom_(str, document) : str;
+};
+goog.string.unescapeEntitiesUsingDom_ = function(str, opt_document) {
+  var seen = {"&amp;":"&", "&lt;":"<", "&gt;":">", "&quot;":'"'};
+  var div = opt_document ? opt_document.createElement("div") : goog.global.document.createElement("div");
+  return str.replace(goog.string.HTML_ENTITY_PATTERN_, function(s, entity) {
+    var value = seen[s];
+    if (value) {
+      return value;
+    }
+    if ("#" == entity.charAt(0)) {
+      var n = Number("0" + entity.substr(1));
+      isNaN(n) || (value = String.fromCharCode(n));
+    }
+    value || (goog.dom.safe.setInnerHtml(div, goog.html.uncheckedconversions.safeHtmlFromStringKnownToSatisfyTypeContract(goog.string.Const.from("Single HTML entity."), s + " ")), value = div.firstChild.nodeValue.slice(0, -1));
+    return seen[s] = value;
+  });
+};
+goog.string.unescapePureXmlEntities_ = function(str) {
+  return str.replace(/&([^;]+);/g, function(s, entity) {
+    switch(entity) {
+      case "amp":
+        return "&";
+      case "lt":
+        return "<";
+      case "gt":
+        return ">";
+      case "quot":
+        return '"';
+      default:
+        if ("#" == entity.charAt(0)) {
+          var n = Number("0" + entity.substr(1));
+          if (!isNaN(n)) {
+            return String.fromCharCode(n);
+          }
+        }
+        return s;
+    }
+  });
+};
+goog.string.HTML_ENTITY_PATTERN_ = /&([^;\s<&]+);?/g;
+goog.string.whitespaceEscape = function(str, opt_xml) {
+  return goog.string.newLineToBr(str.replace(/  /g, " &#160;"), opt_xml);
+};
+goog.string.preserveSpaces = function(str) {
+  return str.replace(/(^|[\n ]) /g, "$1" + goog.string.Unicode.NBSP);
+};
+goog.string.stripQuotes = function(str, quoteChars) {
+  for (var length = quoteChars.length, i = 0; i < length; i++) {
+    var quoteChar = 1 == length ? quoteChars : quoteChars.charAt(i);
+    if (str.charAt(0) == quoteChar && str.charAt(str.length - 1) == quoteChar) {
+      return str.substring(1, str.length - 1);
+    }
+  }
+  return str;
+};
+goog.string.truncate = function(str, chars, opt_protectEscapedCharacters) {
+  opt_protectEscapedCharacters && (str = goog.string.unescapeEntities(str));
+  str.length > chars && (str = str.substring(0, chars - 3) + "...");
+  opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
+  return str;
+};
+goog.string.truncateMiddle = function(str, chars, opt_protectEscapedCharacters, opt_trailingChars) {
+  opt_protectEscapedCharacters && (str = goog.string.unescapeEntities(str));
+  if (opt_trailingChars && str.length > chars) {
+    opt_trailingChars > chars && (opt_trailingChars = chars), str = str.substring(0, chars - opt_trailingChars) + "..." + str.substring(str.length - opt_trailingChars);
+  } else {
+    if (str.length > chars) {
+      var half = Math.floor(chars / 2);
+      str = str.substring(0, half + chars % 2) + "..." + str.substring(str.length - half);
+    }
+  }
+  opt_protectEscapedCharacters && (str = goog.string.htmlEscape(str));
+  return str;
+};
+goog.string.specialEscapeChars_ = {"\x00":"\\0", "\b":"\\b", "\f":"\\f", "\n":"\\n", "\r":"\\r", "\t":"\\t", "\x0B":"\\x0B", '"':'\\"', "\\":"\\\\", "<":"<"};
+goog.string.jsEscapeCache_ = {"'":"\\'"};
+goog.string.quote = function(s) {
+  s = String(s);
+  for (var sb = ['"'], i = 0; i < s.length; i++) {
+    var ch = s.charAt(i), cc = ch.charCodeAt(0);
+    sb[i + 1] = goog.string.specialEscapeChars_[ch] || (31 < cc && 127 > cc ? ch : goog.string.escapeChar(ch));
+  }
+  sb.push('"');
+  return sb.join("");
+};
+goog.string.escapeString = function(str) {
+  for (var sb = [], i = 0; i < str.length; i++) {
+    sb[i] = goog.string.escapeChar(str.charAt(i));
+  }
+  return sb.join("");
+};
+goog.string.escapeChar = function(c) {
+  if (c in goog.string.jsEscapeCache_) {
+    return goog.string.jsEscapeCache_[c];
+  }
+  if (c in goog.string.specialEscapeChars_) {
+    return goog.string.jsEscapeCache_[c] = goog.string.specialEscapeChars_[c];
+  }
+  var cc = c.charCodeAt(0);
+  if (31 < cc && 127 > cc) {
+    var rv = c;
+  } else {
+    if (256 > cc) {
+      if (rv = "\\x", 16 > cc || 256 < cc) {
+        rv += "0";
+      }
+    } else {
+      rv = "\\u", 4096 > cc && (rv += "0");
+    }
+    rv += cc.toString(16).toUpperCase();
+  }
+  return goog.string.jsEscapeCache_[c] = rv;
+};
+goog.string.contains = goog.string.internal.contains;
+goog.string.caseInsensitiveContains = goog.string.internal.caseInsensitiveContains;
+goog.string.countOf = function(s, ss) {
+  return s && ss ? s.split(ss).length - 1 : 0;
+};
+goog.string.removeAt = function(s, index, stringLength) {
+  var resultStr = s;
+  0 <= index && index < s.length && 0 < stringLength && (resultStr = s.substr(0, index) + s.substr(index + stringLength, s.length - index - stringLength));
+  return resultStr;
+};
+goog.string.remove = function(str, substr) {
+  return str.replace(substr, "");
+};
+goog.string.removeAll = function(s, ss) {
+  var re = new RegExp(goog.string.regExpEscape(ss), "g");
+  return s.replace(re, "");
+};
+goog.string.replaceAll = function(s, ss, replacement) {
+  var re = new RegExp(goog.string.regExpEscape(ss), "g");
+  return s.replace(re, replacement.replace(/\$/g, "$$$$"));
+};
+goog.string.regExpEscape = function(s) {
+  return String(s).replace(/([-()\[\]{}+?*.$\^|,:#<!\\])/g, "\\$1").replace(/\x08/g, "\\x08");
+};
+goog.string.repeat = String.prototype.repeat ? function(string, length) {
+  return string.repeat(length);
+} : function(string, length) {
+  return Array(length + 1).join(string);
+};
+goog.string.padNumber = function(num, length, opt_precision) {
+  var s = goog.isDef(opt_precision) ? num.toFixed(opt_precision) : String(num), index = s.indexOf(".");
+  -1 == index && (index = s.length);
+  return goog.string.repeat("0", Math.max(0, length - index)) + s;
+};
+goog.string.makeSafe = function(obj) {
+  return null == obj ? "" : String(obj);
+};
+goog.string.buildString = function(var_args) {
+  return Array.prototype.join.call(arguments, "");
+};
+goog.string.getRandomString = function() {
+  return Math.floor(2147483648 * Math.random()).toString(36) + Math.abs(Math.floor(2147483648 * Math.random()) ^ goog.now()).toString(36);
+};
+goog.string.compareVersions = goog.string.internal.compareVersions;
+goog.string.hashCode = function(str) {
+  for (var result = 0, i = 0; i < str.length; ++i) {
+    result = 31 * result + str.charCodeAt(i) >>> 0;
+  }
+  return result;
+};
+goog.string.uniqueStringCounter_ = 2147483648 * Math.random() | 0;
+goog.string.createUniqueString = function() {
+  return "goog_" + goog.string.uniqueStringCounter_++;
+};
+goog.string.toNumber = function(str) {
+  var num = Number(str);
+  return 0 == num && goog.string.isEmptyOrWhitespace(str) ? NaN : num;
+};
+goog.string.isLowerCamelCase = function(str) {
+  return /^[a-z]+([A-Z][a-z]*)*$/.test(str);
+};
+goog.string.isUpperCamelCase = function(str) {
+  return /^([A-Z][a-z]*)+$/.test(str);
+};
+goog.string.toCamelCase = function(str) {
+  return String(str).replace(/\-([a-z])/g, function(all, match) {
+    return match.toUpperCase();
+  });
+};
+goog.string.toSelectorCase = function(str) {
+  return String(str).replace(/([A-Z])/g, "-$1").toLowerCase();
+};
+goog.string.toTitleCase = function(str, opt_delimiters) {
+  var delimiters = goog.isString(opt_delimiters) ? goog.string.regExpEscape(opt_delimiters) : "\\s";
+  return str.replace(new RegExp("(^" + (delimiters ? "|[" + delimiters + "]+" : "") + ")([a-z])", "g"), function(all, p1, p2) {
+    return p1 + p2.toUpperCase();
+  });
+};
+goog.string.capitalize = function(str) {
+  return String(str.charAt(0)).toUpperCase() + String(str.substr(1)).toLowerCase();
+};
+goog.string.parseInt = function(value) {
+  isFinite(value) && (value = String(value));
+  return goog.isString(value) ? /^\s*-?0x/i.test(value) ? parseInt(value, 16) : parseInt(value, 10) : NaN;
+};
+goog.string.splitLimit = function(str, separator, limit) {
+  for (var parts = str.split(separator), returnVal = []; 0 < limit && parts.length;) {
+    returnVal.push(parts.shift()), limit--;
+  }
+  parts.length && returnVal.push(parts.join(separator));
+  return returnVal;
+};
+goog.string.lastComponent = function(str, separators) {
+  if (separators) {
+    "string" == typeof separators && (separators = [separators]);
+  } else {
+    return str;
+  }
+  for (var lastSeparatorIndex = -1, i = 0; i < separators.length; i++) {
+    if ("" != separators[i]) {
+      var currentSeparatorIndex = str.lastIndexOf(separators[i]);
+      currentSeparatorIndex > lastSeparatorIndex && (lastSeparatorIndex = currentSeparatorIndex);
+    }
+  }
+  return -1 == lastSeparatorIndex ? str : str.slice(lastSeparatorIndex + 1);
+};
+goog.string.editDistance = function(a, b) {
+  var v0 = [], v1 = [];
+  if (a == b) {
+    return 0;
+  }
+  if (!a.length || !b.length) {
+    return Math.max(a.length, b.length);
+  }
+  for (var i = 0; i < b.length + 1; i++) {
+    v0[i] = i;
+  }
+  for (i = 0; i < a.length; i++) {
+    v1[0] = i + 1;
+    for (var j = 0; j < b.length; j++) {
+      v1[j + 1] = Math.min(v1[j] + 1, v0[j + 1] + 1, v0[j] + Number(a[i] != b[j]));
+    }
+    for (j = 0; j < v0.length; j++) {
+      v0[j] = v1[j];
+    }
+  }
+  return v1[b.length];
+};
+/*
+
+ Copyright (c) 2017 The Polymer Project Authors. All rights reserved.
+ This code may only be used under the BSD style license found at
+ http://polymer.github.io/LICENSE.txt
+ The complete set of authors may be found at
+ http://polymer.github.io/AUTHORS.txt
+ The complete set of contributors may be found at
+ http://polymer.github.io/CONTRIBUTORS.txt
+ Code distributed by Google as part of the polymer project is also
+ subject to an additional IP rights grant found at
+ http://polymer.github.io/PATENTS.txt
+*/
+var security = {html:{}};
+security.html.contracts = {};
+security.html.contracts.AttrType = {NONE:1, SAFE_HTML:2, SAFE_URL:3, TRUSTED_RESOURCE_URL:4, SAFE_STYLE:5, SAFE_SCRIPT:7, ENUM:8, COMPILE_TIME_CONSTANT:9, IDENTIFIER:10, SAFE_URL_SET:11};
+security.html.contracts.ElementContentType = {CONTRACT_UNSPECIFIED:0, SAFE_HTML:1, SAFE_STYLESHEET:2, SAFE_SCRIPT:3, BLACKLIST:4, VOID:5, STRING_RCDATA:6};
+security.html.contracts.typeOfAttribute = function(elName, attrName, getValue) {
+  if (Object.hasOwnProperty.call(security.html.contracts.ELEMENT_CONTRACTS_, elName)) {
+    var elementInfo = security.html.contracts.ELEMENT_CONTRACTS_[elName];
+    if (Object.hasOwnProperty.call(elementInfo, attrName)) {
+      var attrInfoArray = elementInfo[attrName];
+      if (attrInfoArray instanceof Array) {
+        for (var valueCache = null, requiredValueNotFound = !1, i = 0, n = attrInfoArray.length; i < n; ++i) {
+          var attrInfo = attrInfoArray[i], contingentAttr = attrInfo.contingentAttribute;
+          if (!contingentAttr) {
+            return attrInfo.contract;
+          }
+          null === valueCache && (valueCache = {});
+          var actualValue = Object.hasOwnProperty.call(valueCache, contingentAttr) ? valueCache[contingentAttr] : valueCache[contingentAttr] = getValue(contingentAttr);
+          if (actualValue === attrInfo.requiredValue) {
+            return attrInfo.contract;
+          }
+          null == actualValue && (requiredValueNotFound = !0);
+        }
+        if (requiredValueNotFound) {
+          return null;
+        }
+      }
+    }
+  }
+  var globalAttrType = security.html.contracts.GLOBAL_ATTRS_[attrName];
+  return "number" === typeof globalAttrType ? globalAttrType : null;
+};
+security.html.contracts.contentTypeForElement = function(elemName) {
+  return Object.hasOwnProperty.call(security.html.contracts.ELEMENT_CONTENT_TYPES_, elemName) ? security.html.contracts.ELEMENT_CONTENT_TYPES_[elemName] : null;
+};
+security.html.contracts.isEnumValueAllowed = function(elemName, attrName, value) {
+  var valueSetIndex = null, attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_[elemName];
+  attrToValueSetIndex && (valueSetIndex = attrToValueSetIndex[attrName]);
+  return "number" !== typeof valueSetIndex && ((attrToValueSetIndex = security.html.contracts.ENUM_VALUE_SET_BY_ATTR_["*"]) && (valueSetIndex = attrToValueSetIndex[attrName]), "number" !== typeof valueSetIndex) ? !1 : !0 === security.html.contracts.ENUM_VALUE_SETS_[valueSetIndex][String(value).toLowerCase()];
+};
+security.html.contracts.GLOBAL_ATTRS_ = {align:security.html.contracts.AttrType.NONE, alt:security.html.contracts.AttrType.NONE, "aria-activedescendant":security.html.contracts.AttrType.IDENTIFIER, "aria-atomic":security.html.contracts.AttrType.NONE, "aria-autocomplete":security.html.contracts.AttrType.NONE, "aria-busy":security.html.contracts.AttrType.NONE, "aria-checked":security.html.contracts.AttrType.NONE, "aria-disabled":security.html.contracts.AttrType.NONE, "aria-dropeffect":security.html.contracts.AttrType.NONE, 
+"aria-expanded":security.html.contracts.AttrType.NONE, "aria-haspopup":security.html.contracts.AttrType.NONE, "aria-hidden":security.html.contracts.AttrType.NONE, "aria-invalid":security.html.contracts.AttrType.NONE, "aria-label":security.html.contracts.AttrType.NONE, "aria-level":security.html.contracts.AttrType.NONE, "aria-live":security.html.contracts.AttrType.NONE, "aria-multiline":security.html.contracts.AttrType.NONE, "aria-multiselectable":security.html.contracts.AttrType.NONE, "aria-orientation":security.html.contracts.AttrType.NONE, 
+"aria-posinset":security.html.contracts.AttrType.NONE, "aria-pressed":security.html.contracts.AttrType.NONE, "aria-readonly":security.html.contracts.AttrType.NONE, "aria-relevant":security.html.contracts.AttrType.NONE, "aria-required":security.html.contracts.AttrType.NONE, "aria-selected":security.html.contracts.AttrType.NONE, "aria-setsize":security.html.contracts.AttrType.NONE, "aria-sort":security.html.contracts.AttrType.NONE, "aria-valuemax":security.html.contracts.AttrType.NONE, "aria-valuemin":security.html.contracts.AttrType.NONE, 
+"aria-valuenow":security.html.contracts.AttrType.NONE, "aria-valuetext":security.html.contracts.AttrType.NONE, autocapitalize:security.html.contracts.AttrType.NONE, autocomplete:security.html.contracts.AttrType.NONE, autocorrect:security.html.contracts.AttrType.NONE, autofocus:security.html.contracts.AttrType.NONE, bgcolor:security.html.contracts.AttrType.NONE, border:security.html.contracts.AttrType.NONE, checked:security.html.contracts.AttrType.NONE, "class":security.html.contracts.AttrType.NONE, 
+color:security.html.contracts.AttrType.NONE, cols:security.html.contracts.AttrType.NONE, colspan:security.html.contracts.AttrType.NONE, contenteditable:security.html.contracts.AttrType.NONE, dir:security.html.contracts.AttrType.ENUM, disabled:security.html.contracts.AttrType.NONE, draggable:security.html.contracts.AttrType.NONE, enctype:security.html.contracts.AttrType.NONE, face:security.html.contracts.AttrType.NONE, "for":security.html.contracts.AttrType.IDENTIFIER, formenctype:security.html.contracts.AttrType.NONE, 
+frameborder:security.html.contracts.AttrType.NONE, height:security.html.contracts.AttrType.NONE, hidden:security.html.contracts.AttrType.NONE, href:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, hreflang:security.html.contracts.AttrType.NONE, id:security.html.contracts.AttrType.IDENTIFIER, ismap:security.html.contracts.AttrType.NONE, itemid:security.html.contracts.AttrType.NONE, itemprop:security.html.contracts.AttrType.NONE, itemref:security.html.contracts.AttrType.NONE, itemscope:security.html.contracts.AttrType.NONE, 
+itemtype:security.html.contracts.AttrType.NONE, label:security.html.contracts.AttrType.NONE, lang:security.html.contracts.AttrType.NONE, list:security.html.contracts.AttrType.IDENTIFIER, loop:security.html.contracts.AttrType.NONE, max:security.html.contracts.AttrType.NONE, maxlength:security.html.contracts.AttrType.NONE, min:security.html.contracts.AttrType.NONE, multiple:security.html.contracts.AttrType.NONE, muted:security.html.contracts.AttrType.NONE, name:security.html.contracts.AttrType.IDENTIFIER, 
+placeholder:security.html.contracts.AttrType.NONE, preload:security.html.contracts.AttrType.NONE, rel:security.html.contracts.AttrType.NONE, required:security.html.contracts.AttrType.NONE, reversed:security.html.contracts.AttrType.NONE, role:security.html.contracts.AttrType.NONE, rows:security.html.contracts.AttrType.NONE, rowspan:security.html.contracts.AttrType.NONE, selected:security.html.contracts.AttrType.NONE, shape:security.html.contracts.AttrType.NONE, size:security.html.contracts.AttrType.NONE, 
+sizes:security.html.contracts.AttrType.NONE, span:security.html.contracts.AttrType.NONE, spellcheck:security.html.contracts.AttrType.NONE, src:security.html.contracts.AttrType.TRUSTED_RESOURCE_URL, start:security.html.contracts.AttrType.NONE, step:security.html.contracts.AttrType.NONE, style:security.html.contracts.AttrType.SAFE_STYLE, summary:security.html.contracts.AttrType.NONE, tabindex:security.html.contracts.AttrType.NONE, target:security.html.contracts.AttrType.ENUM, title:security.html.contracts.AttrType.NONE, 
+translate:security.html.contracts.AttrType.NONE, valign:security.html.contracts.AttrType.NONE, value:security.html.contracts.AttrType.NONE, width:security.html.contracts.AttrType.NONE, wrap:security.html.contracts.AttrType.NONE};
+security.html.contracts.ELEMENT_CONTRACTS_ = {a:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, area:{href:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, audio:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, blockquote:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, button:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, 
+command:{type:[{contract:security.html.contracts.AttrType.NONE}]}, content:{select:[{contract:security.html.contracts.AttrType.NONE}]}, del:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, details:{open:[{contract:security.html.contracts.AttrType.NONE}]}, form:{action:[{contract:security.html.contracts.AttrType.SAFE_URL}], method:[{contract:security.html.contracts.AttrType.NONE}]}, iframe:{srcdoc:[{contract:security.html.contracts.AttrType.SAFE_HTML}]}, img:{src:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
+srcset:[{contract:security.html.contracts.AttrType.SAFE_URL_SET}]}, input:{formaction:[{contract:security.html.contracts.AttrType.SAFE_URL}], formmethod:[{contract:security.html.contracts.AttrType.NONE}], pattern:[{contract:security.html.contracts.AttrType.NONE}], readonly:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}], type:[{contract:security.html.contracts.AttrType.NONE}]}, ins:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, 
+li:{type:[{contract:security.html.contracts.AttrType.NONE}]}, link:{href:[{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"alternate"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"author"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"bookmark"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"canonical"}, 
+{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"cite"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"help"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"icon"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"license"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"next"}, 
+{contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"dns-prefetch"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prerender"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"preconnect"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", 
+requiredValue:"preload"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"prev"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"search"}, {contract:security.html.contracts.AttrType.SAFE_URL, contingentAttribute:"rel", requiredValue:"subresource"}], media:[{contract:security.html.contracts.AttrType.NONE}], nonce:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, 
+menuitem:{icon:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, ol:{type:[{contract:security.html.contracts.AttrType.NONE}]}, q:{cite:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, script:{nonce:[{contract:security.html.contracts.AttrType.NONE}], type:[{contract:security.html.contracts.AttrType.NONE}]}, source:{media:[{contract:security.html.contracts.AttrType.NONE}], src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}, style:{media:[{contract:security.html.contracts.AttrType.NONE}], 
+nonce:[{contract:security.html.contracts.AttrType.NONE}]}, table:{cellpadding:[{contract:security.html.contracts.AttrType.NONE}], cellspacing:[{contract:security.html.contracts.AttrType.NONE}]}, textarea:{readonly:[{contract:security.html.contracts.AttrType.NONE}]}, time:{datetime:[{contract:security.html.contracts.AttrType.NONE}]}, video:{autoplay:[{contract:security.html.contracts.AttrType.NONE}], controls:[{contract:security.html.contracts.AttrType.NONE}], poster:[{contract:security.html.contracts.AttrType.SAFE_URL}], 
+src:[{contract:security.html.contracts.AttrType.SAFE_URL}]}};
+security.html.contracts.ELEMENT_CONTENT_TYPES_ = {a:security.html.contracts.ElementContentType.SAFE_HTML, abbr:security.html.contracts.ElementContentType.SAFE_HTML, address:security.html.contracts.ElementContentType.SAFE_HTML, applet:security.html.contracts.ElementContentType.BLACKLIST, area:security.html.contracts.ElementContentType.VOID, article:security.html.contracts.ElementContentType.SAFE_HTML, aside:security.html.contracts.ElementContentType.SAFE_HTML, audio:security.html.contracts.ElementContentType.SAFE_HTML, 
+b:security.html.contracts.ElementContentType.SAFE_HTML, base:security.html.contracts.ElementContentType.BLACKLIST, bdi:security.html.contracts.ElementContentType.SAFE_HTML, bdo:security.html.contracts.ElementContentType.SAFE_HTML, blockquote:security.html.contracts.ElementContentType.SAFE_HTML, body:security.html.contracts.ElementContentType.SAFE_HTML, br:security.html.contracts.ElementContentType.VOID, button:security.html.contracts.ElementContentType.SAFE_HTML, canvas:security.html.contracts.ElementContentType.SAFE_HTML, 
+caption:security.html.contracts.ElementContentType.SAFE_HTML, cite:security.html.contracts.ElementContentType.SAFE_HTML, code:security.html.contracts.ElementContentType.SAFE_HTML, col:security.html.contracts.ElementContentType.VOID, colgroup:security.html.contracts.ElementContentType.SAFE_HTML, command:security.html.contracts.ElementContentType.SAFE_HTML, content:security.html.contracts.ElementContentType.SAFE_HTML, data:security.html.contracts.ElementContentType.SAFE_HTML, datalist:security.html.contracts.ElementContentType.SAFE_HTML, 
+dd:security.html.contracts.ElementContentType.SAFE_HTML, del:security.html.contracts.ElementContentType.SAFE_HTML, details:security.html.contracts.ElementContentType.SAFE_HTML, dfn:security.html.contracts.ElementContentType.SAFE_HTML, dialog:security.html.contracts.ElementContentType.SAFE_HTML, div:security.html.contracts.ElementContentType.SAFE_HTML, dl:security.html.contracts.ElementContentType.SAFE_HTML, dt:security.html.contracts.ElementContentType.SAFE_HTML, em:security.html.contracts.ElementContentType.SAFE_HTML, 
+embed:security.html.contracts.ElementContentType.BLACKLIST, fieldset:security.html.contracts.ElementContentType.SAFE_HTML, figcaption:security.html.contracts.ElementContentType.SAFE_HTML, figure:security.html.contracts.ElementContentType.SAFE_HTML, font:security.html.contracts.ElementContentType.SAFE_HTML, footer:security.html.contracts.ElementContentType.SAFE_HTML, form:security.html.contracts.ElementContentType.SAFE_HTML, frame:security.html.contracts.ElementContentType.SAFE_HTML, frameset:security.html.contracts.ElementContentType.SAFE_HTML, 
+h1:security.html.contracts.ElementContentType.SAFE_HTML, h2:security.html.contracts.ElementContentType.SAFE_HTML, h3:security.html.contracts.ElementContentType.SAFE_HTML, h4:security.html.contracts.ElementContentType.SAFE_HTML, h5:security.html.contracts.ElementContentType.SAFE_HTML, h6:security.html.contracts.ElementContentType.SAFE_HTML, head:security.html.contracts.ElementContentType.SAFE_HTML, header:security.html.contracts.ElementContentType.SAFE_HTML, hr:security.html.contracts.ElementContentType.VOID, 
+html:security.html.contracts.ElementContentType.SAFE_HTML, i:security.html.contracts.ElementContentType.SAFE_HTML, iframe:security.html.contracts.ElementContentType.SAFE_HTML, img:security.html.contracts.ElementContentType.VOID, input:security.html.contracts.ElementContentType.VOID, ins:security.html.contracts.ElementContentType.SAFE_HTML, kbd:security.html.contracts.ElementContentType.SAFE_HTML, keygen:security.html.contracts.ElementContentType.VOID, label:security.html.contracts.ElementContentType.SAFE_HTML, 
+legend:security.html.contracts.ElementContentType.SAFE_HTML, li:security.html.contracts.ElementContentType.SAFE_HTML, link:security.html.contracts.ElementContentType.VOID, main:security.html.contracts.ElementContentType.SAFE_HTML, map:security.html.contracts.ElementContentType.SAFE_HTML, mark:security.html.contracts.ElementContentType.SAFE_HTML, math:security.html.contracts.ElementContentType.BLACKLIST, menu:security.html.contracts.ElementContentType.SAFE_HTML, menuitem:security.html.contracts.ElementContentType.SAFE_HTML, 
+meta:security.html.contracts.ElementContentType.BLACKLIST, meter:security.html.contracts.ElementContentType.SAFE_HTML, nav:security.html.contracts.ElementContentType.SAFE_HTML, noscript:security.html.contracts.ElementContentType.SAFE_HTML, object:security.html.contracts.ElementContentType.BLACKLIST, ol:security.html.contracts.ElementContentType.SAFE_HTML, optgroup:security.html.contracts.ElementContentType.SAFE_HTML, option:security.html.contracts.ElementContentType.SAFE_HTML, output:security.html.contracts.ElementContentType.SAFE_HTML, 
+p:security.html.contracts.ElementContentType.SAFE_HTML, param:security.html.contracts.ElementContentType.VOID, picture:security.html.contracts.ElementContentType.SAFE_HTML, pre:security.html.contracts.ElementContentType.SAFE_HTML, progress:security.html.contracts.ElementContentType.SAFE_HTML, q:security.html.contracts.ElementContentType.SAFE_HTML, rb:security.html.contracts.ElementContentType.SAFE_HTML, rp:security.html.contracts.ElementContentType.SAFE_HTML, rt:security.html.contracts.ElementContentType.SAFE_HTML, 
+rtc:security.html.contracts.ElementContentType.SAFE_HTML, ruby:security.html.contracts.ElementContentType.SAFE_HTML, s:security.html.contracts.ElementContentType.SAFE_HTML, samp:security.html.contracts.ElementContentType.SAFE_HTML, script:security.html.contracts.ElementContentType.SAFE_SCRIPT, section:security.html.contracts.ElementContentType.SAFE_HTML, select:security.html.contracts.ElementContentType.SAFE_HTML, slot:security.html.contracts.ElementContentType.SAFE_HTML, small:security.html.contracts.ElementContentType.SAFE_HTML, 
+source:security.html.contracts.ElementContentType.VOID, span:security.html.contracts.ElementContentType.SAFE_HTML, strong:security.html.contracts.ElementContentType.SAFE_HTML, style:security.html.contracts.ElementContentType.SAFE_STYLESHEET, sub:security.html.contracts.ElementContentType.SAFE_HTML, summary:security.html.contracts.ElementContentType.SAFE_HTML, sup:security.html.contracts.ElementContentType.SAFE_HTML, svg:security.html.contracts.ElementContentType.BLACKLIST, table:security.html.contracts.ElementContentType.SAFE_HTML, 
+tbody:security.html.contracts.ElementContentType.SAFE_HTML, td:security.html.contracts.ElementContentType.SAFE_HTML, template:security.html.contracts.ElementContentType.BLACKLIST, textarea:security.html.contracts.ElementContentType.STRING_RCDATA, tfoot:security.html.contracts.ElementContentType.SAFE_HTML, th:security.html.contracts.ElementContentType.SAFE_HTML, thead:security.html.contracts.ElementContentType.SAFE_HTML, time:security.html.contracts.ElementContentType.SAFE_HTML, title:security.html.contracts.ElementContentType.STRING_RCDATA, 
+tr:security.html.contracts.ElementContentType.SAFE_HTML, track:security.html.contracts.ElementContentType.VOID, u:security.html.contracts.ElementContentType.SAFE_HTML, ul:security.html.contracts.ElementContentType.SAFE_HTML, "var":security.html.contracts.ElementContentType.SAFE_HTML, video:security.html.contracts.ElementContentType.SAFE_HTML, wbr:security.html.contracts.ElementContentType.VOID};
+security.html.contracts.ENUM_VALUE_SETS_ = [{auto:!0, ltr:!0, rtl:!0}, {_self:!0, _blank:!0}];
+security.html.contracts.ENUM_VALUE_SET_BY_ATTR_ = {"*":{dir:0, target:1}};
+security.html.namealiases = {};
+security.html.namealiases.propertyToAttr = function(propName) {
+  var propToAttr = security.html.namealiases.propToAttr_;
+  if (!propToAttr) {
+    var attrToProp = security.html.namealiases.getAttrToProp_();
+    propToAttr = security.html.namealiases.propToAttr_ = goog.object.transpose(attrToProp);
+  }
+  var attr = propToAttr[propName];
+  return goog.isString(attr) ? attr : goog.string.toSelectorCase(propName);
+};
+security.html.namealiases.attrToProperty = function(attrName) {
+  var canonAttrName = String(attrName).toLowerCase(), prop = security.html.namealiases.getAttrToProp_()[canonAttrName];
+  return goog.isString(prop) ? prop : goog.string.toCamelCase(canonAttrName);
+};
+security.html.namealiases.specialPropertyNameWorstCase = function(name) {
+  var lcname = name.toLowerCase(), prop = security.html.namealiases.getAttrToProp_()[lcname];
+  return goog.isString(prop) ? prop : null;
+};
+security.html.namealiases.getAttrToProp_ = function() {
+  if (!security.html.namealiases.attrToProp_) {
+    security.html.namealiases.attrToProp_ = goog.object.clone(security.html.namealiases.ODD_ATTR_TO_PROP_);
+    for (var noncanon = security.html.namealiases.NONCANON_PROPS_, i = 0, n = noncanon.length; i < n; ++i) {
+      var name = noncanon[i];
+      security.html.namealiases.attrToProp_[name.toLowerCase()] = name;
+    }
+  }
+  return security.html.namealiases.attrToProp_;
+};
+security.html.namealiases.NONCANON_PROPS_ = "aLink accessKey allowFullscreen bgColor cellPadding cellSpacing codeBase codeType contentEditable crossOrigin dateTime dirName formAction formEnctype formMethod formNoValidate formTarget frameBorder innerHTML innerText inputMode isMap longDesc marginHeight marginWidth maxLength mediaGroup minLength noHref noResize noShade noValidate noWrap nodeValue outerHTML outerText readOnly tabIndex textContent trueSpeed useMap vAlign vLink valueAsDate valueAsNumber valueType".split(" ");
+security.html.namealiases.ODD_ATTR_TO_PROP_ = {accept_charset:"acceptCharset", "char":"ch", charoff:"chOff", checked:"defaultChecked", "class":"className", "for":"htmlFor", http_equiv:"httpEquiv", muted:"defaultMuted", selected:"defaultSelected", value:"defaultValue"};
+security.html.namealiases.attrToProp_ = null;
+security.html.namealiases.propToAttr_ = null;
+security.polymer_resin = {};
+security.polymer_resin.CustomElementClassification = {BUILTIN:0, LEGACY:1, CUSTOM:2, CUSTOMIZABLE:3};
+security.polymer_resin.docRegisteredElements_ = {};
+security.polymer_resin.usePolymerTelemetry_ = !1;
+security.polymer_resin.countPolymerTelemetryUnrolled_ = 0;
+security.polymer_resin.hintUsesDeprecatedRegisterElement = function() {
+  security.polymer_resin.usePolymerTelemetry_ = !0;
+};
+security.polymer_resin.ELEMENT_NAME_CHAR_RANGES_ = "a-z.0-9_\u00b7\u00c0-\u00d6\u00d8-\u00f6\u00f8-\u037d\u200c\u200d\u203f-\u2040\u2070-\u218f\u2c00-\u2fef\u3001-\udfff\uf900-\ufdcf\ufdf0-\ufffd";
+security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_ = new RegExp("^(?!(?:annotation-xml|color-profile|font-face|font-face(?:-(?:src|uri|format|name))?|missing-glyph)$)[a-z][" + security.polymer_resin.ELEMENT_NAME_CHAR_RANGES_ + "]*-[\\-" + security.polymer_resin.ELEMENT_NAME_CHAR_RANGES_ + "]*$");
+security.polymer_resin.classifyElement = function(name, ctor) {
+  var customElementsRegistry = window.customElements;
+  if (security.polymer_resin.usePolymerTelemetry_) {
+    for (var regs = window.Polymer.telemetry.registrations, n = regs.length, i = security.polymer_resin.countPolymerTelemetryUnrolled_; i < n; ++i) {
+      security.polymer_resin.docRegisteredElements_[regs[i].is] = security.polymer_resin.docRegisteredElements_;
+    }
+    security.polymer_resin.countPolymerTelemetryUnrolled_ = n;
+  }
+  return customElementsRegistry && customElementsRegistry.get(name) || security.polymer_resin.docRegisteredElements_[name] === security.polymer_resin.docRegisteredElements_ ? security.polymer_resin.CustomElementClassification.CUSTOM : "HTMLUnknownElement" === ctor.name ? security.polymer_resin.CustomElementClassification.LEGACY : "HTMLElement" === ctor.name && security.polymer_resin.VALID_CUSTOM_ELEMENT_NAME_REGEX_.test(name) ? security.polymer_resin.CustomElementClassification.CUSTOMIZABLE : security.polymer_resin.CustomElementClassification.BUILTIN;
+};
+security.polymer_resin.sanitizer = {};
+security.polymer_resin.STANDALONE = !0;
+security.polymer_resin.SafeType = {CONSTANT:"CONSTANT", HTML:"HTML", JAVASCRIPT:"JAVASCRIPT", RESOURCE_URL:"RESOURCE_URL", STRING:"STRING", STYLE:"STYLE", URL:"URL"};
+security.polymer_resin.SRCSET_IMG_CANDIDATE_RE_ = /(?!,)([^\t\n\f\r ]+)(?:[\t\n\f\r ]+([.0-9+\-]+[a-z]?))?/gi;
+security.polymer_resin.ASCII_SPACES_RE_ = /[\t\n\f\r ]+/;
+security.polymer_resin.SRCSET_METACHARS_RE_ = /[\t\n\f\r ,]+/g;
+security.polymer_resin.parseImageCandidate_ = function(str) {
+  var match = str.split(security.polymer_resin.ASCII_SPACES_RE_, 2);
+  return match ? {url:match[0], metadata:match[1]} : null;
+};
+security.polymer_resin.unparseImageCandidate_ = function(imageCandidate) {
+  var imageCandidateString = String(imageCandidate.url).replace(security.polymer_resin.SRCSET_METACHARS_RE_, encodeURIComponent), metadata = imageCandidate.metadata;
+  if (metadata) {
+    security.polymer_resin.SRCSET_METACHARS_RE_.lastIndex = 0;
+    if (security.polymer_resin.SRCSET_METACHARS_RE_.test(metadata)) {
+      return null;
+    }
+    imageCandidateString += " " + metadata;
+  }
+  return imageCandidateString;
+};
+security.polymer_resin.parseSrcset_ = function(str) {
+  var imageCandidateStrings = str.match(security.polymer_resin.SRCSET_IMG_CANDIDATE_RE_);
+  return imageCandidateStrings ? imageCandidateStrings.map(security.polymer_resin.parseImageCandidate_).filter(Boolean) : [];
+};
+security.polymer_resin.unparseSrcset_ = function(x) {
+  if (!Array.isArray(x)) {
+    throw Error();
+  }
+  return x.map(security.polymer_resin.unparseImageCandidate_).filter(Boolean).join(" , ");
+};
+security.polymer_resin.sanitizeSrcset_ = function(x, bridge, safeType) {
+  var safe = [], problems = [], sentinel = {};
+  if (Array.isArray(x)) {
+    for (var i = 0, n = x.length; i < n; ++i) {
+      var imageCandidate = x[i], url = imageCandidate && imageCandidate.url;
+      if (url) {
+        var safeUrl = bridge(url, safeType, sentinel);
+        if (safeUrl) {
+          var foundSafeValue = safeUrl !== sentinel;
+          (foundSafeValue ? safe : problems).push({url:foundSafeValue ? safeUrl : url, metadata:imageCandidate.metadata});
+        }
+      }
+    }
+  } else {
+    problems.push(x);
+  }
+  return {safe:safe, problems:problems.length ? JSON.stringify(problems) : null};
+};
+security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER = function(isViolation, formatString, var_args) {
+  for (var consoleArgs = [formatString], i = 2, n = arguments.length; i < n; ++i) {
+    consoleArgs[i - 1] = arguments[i];
+  }
+  isViolation ? console.warn.apply(console, consoleArgs) : console.log.apply(console, consoleArgs);
+};
+security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_ = function(value, type, fallback) {
+  return fallback;
+};
+security.polymer_resin.sanitizer.makeSanitizer = function(config) {
+  function getAttributeValue(name) {
+    var value = this.getAttribute(name);
+    return !value || /[\[\{]/.test(name) ? null : value;
+  }
+  function sanitize(node, name, type, value) {
+    if (!value && value !== document.all) {
+      return value;
+    }
+    var nodeType = node.nodeType;
+    if (nodeType !== Node.ELEMENT_NODE) {
+      if (nodeType === Node.TEXT_NODE) {
+        var parentElement = node.parentElement, allowText = !parentElement;
+        if (parentElement && parentElement.nodeType === Node.ELEMENT_NODE) {
+          var parentElementName = parentElement.localName;
+          switch(security.polymer_resin.classifyElement(parentElementName, parentElement.constructor)) {
+            case security.polymer_resin.CustomElementClassification.BUILTIN:
+            case security.polymer_resin.CustomElementClassification.LEGACY:
+              var contentType = security.html.contracts.contentTypeForElement(parentElementName);
+              allowText = contentType === security.html.contracts.ElementContentType.SAFE_HTML || contentType === security.html.contracts.ElementContentType.STRING_RCDATA;
+              break;
+            case security.polymer_resin.CustomElementClassification.CUSTOMIZABLE:
+            case security.polymer_resin.CustomElementClassification.CUSTOM:
+              allowText = !0;
+          }
+        }
+        if (allowText) {
+          return "" + safeTypesBridge(value, security.polymer_resin.SafeType.STRING, value);
+        }
+      }
+      reportHandler && reportHandler(!0, "Failed to sanitize %s %s%s node to value %O", node.parentElement && node.parentElement.nodeName, "#text", "", value);
+      return security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+    }
+    var elementName = node.localName;
+    var elementName$jscomp$0 = node.localName;
+    if (node.getAttribute("is") || security.polymer_resin.classifyElement(elementName$jscomp$0, node.constructor) !== security.polymer_resin.CustomElementClassification.CUSTOM) {
+      var uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0];
+      uncustomizedProxy || (uncustomizedProxy = uncustomizedProxies[elementName$jscomp$0] = document.createElement(elementName$jscomp$0));
+      var elementProxy = uncustomizedProxy;
+    } else {
+      elementProxy = VANILLA_HTML_ELEMENT;
+    }
+    switch(type) {
+      case "attribute":
+        if (security.html.namealiases.attrToProperty(name) in elementProxy) {
+          break;
+        }
+        return value;
+      case "property":
+        if (name in elementProxy) {
+          break;
+        }
+        var worstCase = security.html.namealiases.specialPropertyNameWorstCase(name);
+        if (worstCase && worstCase in elementProxy) {
+          break;
+        }
+        return value;
+      default:
+        throw Error(type + ": " + typeof type);
+    }
+    var attrName = "attribute" == type ? name.toLowerCase() : security.html.namealiases.propertyToAttr(name), attrType = security.html.contracts.typeOfAttribute(elementName, attrName, goog.bind(getAttributeValue, node)), safeValue = DID_NOT_UNWRAP, safeReplacement = null;
+    if (null != attrType) {
+      var valueHandler = valueHandlers[attrType], safeType = valueHandler.safeType;
+      safeReplacement = valueHandler.safeReplacement;
+      safeType && (safeValue = safeTypesBridge(value, safeType, DID_NOT_UNWRAP));
+      if (safeValue === DID_NOT_UNWRAP) {
+        if (valueHandler.filterString) {
+          var stringValue = "" + safeTypesBridge(value, security.polymer_resin.SafeType.STRING, value);
+          safeValue = valueHandler.filterString(elementName, attrName, stringValue);
+        } else {
+          valueHandler.filterRaw && (safeValue = valueHandler.filterRaw(elementName, attrName, value));
+        }
+        safeValue === safeReplacement && (safeValue = DID_NOT_UNWRAP);
+      }
+    }
+    safeValue === DID_NOT_UNWRAP && (safeValue = safeReplacement || security.polymer_resin.sanitizer.INNOCUOUS_STRING, reportHandler && reportHandler(!0, 'Failed to sanitize attribute of <%s>: <%s %s="%O">', elementName, elementName, attrName, value));
+    return safeValue;
+  }
+  var reportHandler = config.reportHandler || void 0, safeTypesBridge = config.safeTypesBridge || security.polymer_resin.DEFAULT_SAFE_TYPES_BRIDGE_, configUnsafePassThruDisallowedValues = config.UNSAFE_passThruDisallowedValues, allowUnsafeValues = !1;
+  null != configUnsafePassThruDisallowedValues && goog.DEBUG && (allowUnsafeValues = !0 === configUnsafePassThruDisallowedValues);
+  var allowedIdentifierPattern_ = /^$/, configAllowedIdentifierPrefixes = config.allowedIdentifierPrefixes;
+  if (configAllowedIdentifierPrefixes) {
+    for (var i = 0, n = configAllowedIdentifierPrefixes.length; i < n; ++i) {
+      allowedIdentifierPattern_ = new RegExp(allowedIdentifierPattern_.source + "|^" + goog.string.regExpEscape(configAllowedIdentifierPrefixes[i]));
+    }
+  }
+  goog.DEBUG && void 0 === reportHandler && "undefined" !== typeof console && (reportHandler = security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER);
+  reportHandler && reportHandler(!1, "initResin");
+  var DID_NOT_UNWRAP = {}, valueHandlers = [];
+  valueHandlers[security.html.contracts.AttrType.NONE] = {filterRaw:null, filterString:function(e, a, v) {
+    return v;
+  }, safeReplacement:null, safeType:null};
+  valueHandlers[security.html.contracts.AttrType.SAFE_HTML] = {filterRaw:null, filterString:null, safeReplacement:null, safeType:security.polymer_resin.SafeType.HTML};
+  valueHandlers[security.html.contracts.AttrType.SAFE_URL] = {filterRaw:null, filterString:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.URL};
+  valueHandlers[security.html.contracts.AttrType.TRUSTED_RESOURCE_URL] = {filterRaw:null, filterString:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_URL_, safeType:security.polymer_resin.SafeType.RESOURCE_URL};
+  valueHandlers[security.html.contracts.AttrType.SAFE_STYLE] = {filterRaw:null, filterString:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.STYLE};
+  valueHandlers[security.html.contracts.AttrType.SAFE_SCRIPT] = {filterRaw:null, filterString:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_SCRIPT_, safeType:security.polymer_resin.SafeType.JAVASCRIPT};
+  valueHandlers[security.html.contracts.AttrType.ENUM] = {filterRaw:null, filterString:function(e, a, v) {
+    var lv = String(v).toLowerCase();
+    return security.html.contracts.isEnumValueAllowed(e, a, lv) ? lv : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+  }, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:null};
+  valueHandlers[security.html.contracts.AttrType.COMPILE_TIME_CONSTANT] = {filterRaw:null, filterString:null, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.CONSTANT};
+  valueHandlers[security.html.contracts.AttrType.IDENTIFIER] = {filterRaw:null, filterString:function(e, a, v) {
+    return allowedIdentifierPattern_.test(v) ? v : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+  }, safeReplacement:security.polymer_resin.sanitizer.INNOCUOUS_STRING, safeType:security.polymer_resin.SafeType.CONSTANT};
+  valueHandlers[security.html.contracts.AttrType.SAFE_URL_SET] = {filterRaw:function(e, a, v) {
+    var value = v;
+    "string" === typeof value && (value = security.polymer_resin.parseSrcset_(value));
+    if (!Array.isArray(value)) {
+      return security.polymer_resin.sanitizer.INNOCUOUS_URL_;
+    }
+    var safeAndProblems = security.polymer_resin.sanitizeSrcset_(value, safeTypesBridge, security.polymer_resin.SafeType.URL), structuredValue = safeAndProblems.safe, problems = safeAndProblems.problems, safeValue = DID_NOT_UNWRAP;
+    structuredValue.length && (safeValue = security.polymer_resin.unparseSrcset_(structuredValue) || DID_NOT_UNWRAP);
+    problems && reportHandler && reportHandler(!0, 'Failed to sanitize attribute value of <%s>: <%s %s="%O">: %s', e, e, a, v, problems);
+    return safeValue === DID_NOT_UNWRAP ? security.polymer_resin.sanitizer.INNOCUOUS_URL_ : safeValue;
+  }, filterString:null, safeReplacement:null, safeType:null};
+  var uncustomizedProxies = {}, VANILLA_HTML_ELEMENT = document.createElement("polyresinuncustomized");
+  return allowUnsafeValues ? function(node, name, type, value) {
+    sanitize(node, name, type, value);
+    return value;
+  } : sanitize;
+};
+security.polymer_resin.sanitizer.makeSanitizeDomFunction = function(config, existingSanitizeDomFunction) {
+  var sanitize = security.polymer_resin.sanitizer.makeSanitizer(config);
+  return function(value, name, type, node) {
+    var origSanitizedValue = existingSanitizeDomFunction ? existingSanitizeDomFunction(value, name, type, node) : value;
+    return node ? sanitize(node, name, type, origSanitizedValue) : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+  };
+};
+security.polymer_resin.sanitizer.INNOCUOUS_STRING = "zClosurez";
+security.polymer_resin.sanitizer.INNOCUOUS_SCRIPT_ = " /*zClosurez*/ ";
+security.polymer_resin.sanitizer.INNOCUOUS_URL_ = "about:invalid#zClosurez";
+security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER = security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER;
+security.polymer_resin.install = function(opt_config) {
+  var sanitize = security.polymer_resin.sanitizer.makeSanitizer(opt_config || {});
+  if (/^1\./.test(Polymer.version)) {
+    security.polymer_resin.hintUsesDeprecatedRegisterElement();
+    var origCompute = Polymer.Base._computeFinalAnnotationValue, computeFinalAnnotationSafeValue = function(node, property, value, info) {
+      var finalValue = origCompute.call(this, node, property, value, info), type = "property";
+      if (info && info.propertyName) {
+        var name = info.propertyName;
+      } else {
+        name = property, type = info && info.kind || "property";
+      }
+      return sanitize(node, name, type, finalValue);
+    };
+    Polymer.Base._computeFinalAnnotationValue = computeFinalAnnotationSafeValue;
+    if (Polymer.Base._computeFinalAnnotationValue !== computeFinalAnnotationSafeValue) {
+      throw Error("Cannot replace _computeFinalAnnotationValue.  Is Polymer frozen?");
+    }
+  } else {
+    var origSanitize = Polymer.sanitizeDOMValue || Polymer.Settings && Polymer.Settings.sanitizeDOMValue, sanitizeDOMValue = function(value, name, type, node) {
+      var origSanitizedValue = origSanitize ? origSanitize.call(Polymer, value, name, type, node) : value;
+      return node ? sanitize(node, name, type, origSanitizedValue) : security.polymer_resin.sanitizer.INNOCUOUS_STRING;
+    };
+    if (Polymer.Settings && Polymer.Settings.setSanitizeDOMValue) {
+      Polymer.Settings.setSanitizeDOMValue(sanitizeDOMValue);
+    } else {
+      if (Polymer.sanitizeDOMValue = sanitizeDOMValue, Polymer.sanitizeDOMValue !== sanitizeDOMValue) {
+        throw Error("Cannot install sanitizeDOMValue.  Is Polymer frozen?");
+      }
+    }
+  }
+};
+security.polymer_resin.STANDALONE && (goog.exportSymbol("security.polymer_resin.install", security.polymer_resin.install), goog.exportSymbol("security.polymer_resin.CONSOLE_LOGGING_REPORT_HANDLER", security.polymer_resin.sanitizer.CONSOLE_LOGGING_REPORT_HANDLER));
 /*
 
  Copyright (c) 2018 The Polymer Project Authors. All rights reserved.
